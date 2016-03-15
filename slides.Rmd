@@ -1,0 +1,60 @@
+---
+title       : Ideas for Garmin Connect
+author      : John Sugden
+framework   : revealjs        ## {io2012, html5slides, shower, dzslides, revealjs...}
+revealjs    : {theme: night}  ## {sky, beige, simple, serif, night, moon, solarized, default}
+highlighter : highlight.js    ## {highlight.js, prettify, highlight}
+widgets     : []              ## {mathjax, quiz, bootstrap}
+mode        : selfcontained   ## {standalone, draft, selfcontained}
+## transition {cube, page, concave, zoom, linear, fade, none, default}
+## ds states {blackout, soothe, alert, whiteout}
+--- 
+
+## Ideas for Garmin <span style="color:steelblue">Connect</span>
+### A presentation by John Sugden
+
+---
+
+## Who Am I?
+
+* local Kansas City data scientist
+* amateur runner
+* Garmin enthusiast
+
+---
+
+## Ideas for Garmin Connect
+
+* Data Envelopment Analysis
+* Change Point Analysis
+* Activity Trends
+
+---
+
+## Data Envelopment Analysis (EDA)
+
+![]()
+
+---
+
+---
+
+## Changepoint Analysis
+
+![]()
+
+---
+
+---
+
+## Activity Trends
+
+![]()
+
+---
+
+---
+
+## These Ideas in Action
+
+http://johnsug.shinyapps.io/
