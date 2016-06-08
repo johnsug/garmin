@@ -1,0 +1,1 @@
+This analysis is based on [data envelopment analysis](https://en.wikipedia.org/wiki/Data_envelopment_analysis), a mathematical approach of determining efficient production frontiers.
