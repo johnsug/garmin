@@ -1,0 +1,99 @@
+---
+title: "Garmin Demo"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    #social: menu
+    #source_code: embed
+    vertical_layout: fill
+---
+
+```{r setup}
+library(flexdashboard)
+library(htmlwidgets)   ## data viz
+library(plotly)        ## data viz
+library(dygraphs)      ## data viz
+library(leaflet)       ## data viz
+library(ggplot2)       ## data viz
+library(lubridate)     ## manipulating dates data
+library(changepoint)   ## changepoint
+library(Benchmarking)  ## efficient frontier analysis
+```
+
+Introduction
+=======================================================================
+
+I'm a runner and a data junkie, therefore I love my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html). However, when I can't find the insights I want in [Garmin Connect](http://connect.garmin.com), I do my own statistical modeling. This portfolio demonstrates some of the advanced analytics I've developed using my personal running and cycling data. Each tab to the right includes self-contained analyses:
+
+* Efficient Frontier - compares activities from recent history and evaluates how efficient each run is to the aggregate
+* Changepoint Analysis - evaluates changes in performance during recorded activities
+* More - trend analysis reviews historical activity metrics (pace, heart rate, VO2 max, etc) and suggests how they may evolve moving forward
+
+All mathematical modeling was performed using the R software package. Source code can be found via the following Github repository: [https://github.com/johnsug/garmin](https://github.com/johnsug/garmin)
+
+Changepoint Analysis
+=======================================================================
+
+Row {data-height=50}
+-----------------------------------------------------------------------
+
+Changepoint analysis is super cool, yo.
+
+Row
+-----------------------------------------------------------------------
+
+### Event 1
+
+```{r}
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Event 2
+
+```{r}
+
+```
+
+
+Efficient Frontier
+=======================================================================
+
+Row {data-height=50}
+-----------------------------------------------------------------------
+
+Efficient frontiers are cool, too.
+
+
+Row
+-----------------------------------------------------------------------
+
+### Efficient Frontier
+
+```{r}
+
+```
+
+
+Other Ideas
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
