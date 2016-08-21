@@ -20,12 +20,19 @@ library(ggplot2)          ## data viz
 library(lubridate)        ## manipulating dates data
 library(changepoint)      ## changepoint
 library(Benchmarking)     ## efficient frontier analysis
+library(xts)              ## extended time series functionality
 
 # load datasets
+a <- read.csv("activity_log.csv", stringsAsFactors=F)
+a$X <- NULL; names(a)[5] <- "Pace"
 d <- read.csv("forerunner_log.csv", stringsAsFactors=F)
 d <- d[!is.na(d$Distance),]
 dat <- subset(d, Activity.Type=="Running")
 names(dat) <- gsub("\\.", "_", names(dat))
+dat$Full_Activity_Name <- paste(dat$Activity_Name, "-", dat$Start)
+f <- read.csv("detailed_forerunner_log.csv")
+f$Time_Stamp <- paste(f$Date, f$Time)
+f$Time_Stamp <- as.POSIXct(strptime(f$Time_Stamp, "%m/%d/%Y %H:%M:%S"))
 
 # prep data for chainpoint analysis
 d$Pace <- minute(as.POSIXct(strptime(d$Avg.Speed.Avg.Pace, "%M:%S"))) + second(as.POSIXct(strptime(d$Avg.Speed.Avg.Pace, "%M:%S"))) / 60
@@ -38,30 +45,31 @@ d$Avg_MPH <- d$Distance / (d$Mins/60)
 Introduction
 =======================================================================
 
-> I am a runner and a data junkie, therefore I love my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html). However, when I can't find the insights I want in [Garmin Connect](http://connect.garmin.com), I do my own statistical modeling. This portfolio demonstrates some of the advanced analytics I've developed using my personal running and cycling data. Each tab above includes projects I've developed using my personal running data:
-> 
-> * Efficient Frontier - compares activities from recent history and evaluates how efficient each run is to the aggregate
-> * Changepoint Analysis - evaluates changes in performance during recorded activities
-> * More - trend analysis reviews historical activity metrics (pace, heart rate, VO2 max, etc) and suggests how they may evolve moving forward
->  
+<h4>I am a runner and a data junkie, and really love analyzing my runs with the data recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch. The [Garmin Connect](http://connect.garmin.com) dashboards that come with the watch are great, however when I can't find the insights I want, I do my own statistical modeling. This dashboard demonstrates some of the advanced analytics I've developed using my personal running data. The tabs at the top of the dashboard link to different self-contained projects I've come up with:
+  
+* Efficient Frontier - compares activities from recent history and evaluates how efficient each run is to the aggregate
+* Changepoint Analysis - evaluates changes in performance during recorded activities
+* Trend Analysis/Forecasting - reviews historical activity metrics (heart rate, pace, V0<sub>2</sub> max, etc) and suggests how they may evolve moving forward
+</h4> 
 
-This dashboard created by John Sugden using the 'flexdashboard' package in R. For more John, please see my [blog](http://johnsug.github.io) and [LinkedIn](Public Profilehttps://www.linkedin.com/in/johnsugden) profile.
+<br>
+<h5>This dashboard was created by John Sugden using the 'flexdashboard' package in the R. For more about John, please see my [blog](http://johnsug.github.io) and [LinkedIn](Public Profilehttps://www.linkedin.com/in/johnsugden) profile.</h5>
 
 
 Changepoint Analysis
 =======================================================================
 
-Row {data-height=250}
+Row {data-height=200}
 -----------------------------------------------------------------------
 
-> Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes
-to the  values of a time series. Specifically, the methods are used to determine changes in the distribution of values, usually in terms of the average values of the variance of the values. Changepoint analyis is often used to evaluate manufacturing processes, medical devices, and website traffic.
-> 
-> In this example, I'm using changepoint analysis to determine shifts in the intensity of my runs, and to visually split each run into different segments so that I can quickly pick up on macro-level trends and see how my intensity changes over the course of each run.
-> 
-> Use the drop down menus to select different runs (from my Forerunner) and to manually set the number of change points.
+<h4>Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes
+to the values of a time series. Specifically, the methods are used to determine changes in the distribution of values, usually in terms of the average values of the variance of the values. Changepoint analyis is often used to evaluate deviations in manufacturing processes, medical devices, and website traffic.
 
-Row {data-height=800}
+In this example, I'm using changepoint analysis to determine shifts in the intensity of my runs, and to visually split each run into different segments so that I can quickly pick up on macro-level trends and see how my intensity changes over the course of each run.
+ 
+The drop down menus can be used to select different historical runs and to manually set the number of change points.</h4>
+
+Row
 -----------------------------------------------------------------------
 
 ### 
@@ -69,20 +77,76 @@ Row {data-height=800}
 ```{r changepoint analysis}
 ###http://rmarkdown.rstudio.com/flexdashboard/shiny.html
 
+
 shinyApp(
-  ## UI #####
+  
+  ## user interface #####
   ui = 
     fillPage(
-      selectInput("region", "Region:", choices = colnames(WorldPhones)),
-      plotOutput("phonePlot", height = "100%")
+      selectInput("changepoint_list", "Choose Activity", choices=dat$Full_Activity_Name),
+      dygraphOutput("changepoint_plot", height="100%")
   ),
+  
   ## server #####
   server = function(input, output) {
-    output$phonePlot <- renderPlot({
-      barplot(WorldPhones[,input$region]*1000, ylab = "Number of Telephones", xlab = "Year")
+    
+    ## subset changepoint data from full detailed log
+    changepoint_data <- reactive({
+      
+      # filter data based on selection from drop-down menu
+      dat_row <- dat[dat$Full_Activity_Name==input$changepoint_list,]
+      cp_dat <- subset(f, Activity==dat_row$Tagging)
+      
+      # set first point of time series to 0;00:01, to match up with race elapsed time
+      zero_out <- substr(cp_dat$Time_Stamp[1],12,19)
+      zero_out <- as.numeric(substr(zero_out,1,2))*3600 + as.numeric(substr(zero_out,4,5))*60 + as.numeric(substr(zero_out,7,8)) - 1
+      cp_dat$Time_Stamp <- cp_dat$Time_Stamp - zero_out
+      
+      # return data frame
+      cp_dat
     })
-  }
-)
+    
+    ## segment time series (for plotting)
+    time_series <- reactive({
+      ts_dat <- changepoint_data()
+      xts(x=ts_dat$MPH, order.by=ts_dat$Time_Stamp)
+    })
+          
+    ## perform changepoint analysis -- make this reactive later
+    cp <- reactive({
+      
+      ## find changepoints
+      cp_dat <- changepoint_data()
+      cp <- cpt.mean(cp_dat$MPH, method="BinSeg")
+      cp <- c(1,cp@cpts)
+      
+      ## cleanup if changepoint duration is too small (assuming this would only happen once, if at all; may need to address this later)
+      diffs <- diff(cp)
+      for(i in 1:length(diffs)){
+        if(diffs[i] < 4) {cp <- cp[-(i+1)]}
+      }
+      
+      ## return changepoints
+      cp
+    })
+    
+    ## render changepoint plot
+    output$changepoint_plot <- renderDygraph({
+      ts_dat <- time_series()
+      cpts <- cp()
+      n_cpts <- length(cpts) - 1
+      
+      ## 1) need to make number to shade dynamic
+      ## 2) need to add in changepoint segments (maybe also, df with mean values for segment?)
+      dygraph(ts_dat, xlab="Time in Hours", ylab="Running Speed (MPH)") %>% 
+        dyShading(from=time(ts_dat[cpts[1]]), to=time(ts_dat[cpts[2]]), color="red") %>%
+        ## this isn't going to work, going to have to do this manually for Q=2, 3, 4, 5
+        ##if(n_cpts > 2) {dyShading(from=time(ts_dat[cpts[2]]), to=time(ts_dat[cpts[3]]), color="orange") %>% }
+        ##if(n_cpts > 3) {dyShading(from=time(ts_dat[cpts[3]]), to=time(ts_dat[cpts[4]]), color="yellow") %>% }
+        ##if(n_cpts > 4) {dyShading(from=time(ts_dat[cpts[4]]), to=time(ts_dat[cpts[5]]), color="green") %>% }
+        dyOptions(colors=c("dodgerblue", "red"))
+    })
+})
 ```
 
 
@@ -90,12 +154,12 @@ shinyApp(
 Efficient Frontier
 =======================================================================
 
-Row {data-height=250}
+Row {data-height=200}
 -----------------------------------------------------------------------
 
-> Efficient frontiers, sometimes referred to as production-possibility frontiers, are representations of optimal resource allocations, given existing levels of resources. While these frontiers are typically used in business management or economic analyses, their applications can be much broader.
-> 
-> In this example, I wanted to use my historical runs to plot the efficient frontier of my runs, in order to determine how "efficient" my runs are in terms of my fastest runs. Here I am defining an efficent run as one After determining my personal efficient frontier, I can then plot each individual run and determine how efficient they were (on a scale from 0 to 100) and then determine how much faster I should have run, holding my mileage constant, or how much more I should have run, keeping my time constant, in order to approach my theoretical best running performances.
+<h4>Efficient frontiers, sometimes referred to as production-possibility frontiers, are representations of optimal resource allocations, given existing levels of resources. While these frontiers are typically used in business management or economic analyses, their applications can be much broader.
+
+In this example, I wanted to use my historical runs to plot the efficient frontier of my runs, in order to determine how "efficient" my runs are in terms of my fastest runs. Here I am defining an efficent run as one After determining my personal efficient frontier, I can then plot each individual run and determine how efficient they were (on a scale from 0 to 100) and then determine how much faster I should have run, holding my mileage constant, or how much more I should have run, keeping my time constant, in order to approach my theoretical best running performances.</h4>
 
 Row
 -----------------------------------------------------------------------
@@ -113,27 +177,25 @@ shinyApp(
   ## server #####
   server = function(input, output) {
     
-    dat$Avg_MPG <- 1/7
+    # find average MPG
+    dat$Avg_MPH <- 1/7
     
-    dat$Avg_MPG[substr(dat$Avg_Speed_Avg_Pace_,2,2)==":"] <- 
+    dat$Avg_MPH[substr(dat$Avg_Speed_Avg_Pace_,2,2)==":"] <- 
       as.numeric(substr(dat$Avg_Speed_Avg_Pace_[substr(dat$Avg_Speed_Avg_Pace_,2,2)==":"],1,1)) + 
       as.numeric(substr(dat$Avg_Speed_Avg_Pace_[substr(dat$Avg_Speed_Avg_Pace_,2,2)==":"],3,4)) / 60
       
-    dat$Avg_MPG[substr(dat$Avg_Speed_Avg_Pace_,3,3)==":"] <- 
+    dat$Avg_MPH[substr(dat$Avg_Speed_Avg_Pace_,3,3)==":"] <- 
       as.numeric(substr(dat$Avg_Speed_Avg_Pace_[substr(dat$Avg_Speed_Avg_Pace_,3,3)==":"],1,2)) + 
       as.numeric(substr(dat$Avg_Speed_Avg_Pace_[substr(dat$Avg_Speed_Avg_Pace_,3,3)==":"],4,5)) / 60
 
-    }
-    
     ## build efficient frontier
-    dat$Avg_MPH <- dat$Avg_HR ## made up for now
     e <- dea(dat$Distance, dat$Avg_MPH) ## rts = 1 -> variable returns to scale
     dat$Efficiency <- e$eff
     frontier <- data.frame(x=dat$Distance[e$eff==1], y=dat$Avg_MPH[e$eff==1])
     frontier <- frontier[order(frontier$x),]
     frontier <- frontier[!is.na(frontier$x),]
-    frontier <- rbind(c(0,0), frontier, c(floor(max(frontier$x)+3),max(frontier$y)))
-      
+    frontier <- rbind(c(0,0), frontier, c(ceiling(max(dat$Distance)), max(frontier$y)+2))
+    
     ## DEA plot
     output$dea_plot <- renderPlotly({
       p <- plot_ly(dat, x=Distance, y=Avg_MPH, name="Activity", hoverinfo="text", 
@@ -142,8 +204,8 @@ shinyApp(
                                "<br>Distance: ", Distance, 
                                "<br>Efficiency score: ", 
                                round(Efficiency,2)), 
-                   mode="markers") %>%
-        layout(xaxis=list(title="Distance (Miles)"), yaxis=list(title="Spped (MPH)"))
+                   mode="markers", marker=list(size=10), opacity=.75) %>%
+        layout(xaxis=list(title="Distance (Miles)"), yaxis=list(title="Speed (MPH)"))
       add_trace(p, x=frontier$x, y=frontier$y, name="Frontier", mode="lines", opacity=.3)
       })
     }
@@ -153,25 +215,21 @@ shinyApp(
 
 
 
-Other Ideas
+Trend Analysis/Forecasting
 =======================================================================
 
-Row
+Row {.tabset .tabset-fade}
 -----------------------------------------------------------------------
 
-### Chart A
+### Heart Rate
+
+### Pace
+
+> Forecasting
 
 ```{r}
-
-
-
+library(plotly)
+plot_ly(dat=a, x=Date, y=MPH, type="scatter")
 ```
 
-Row 
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-
-```
+### V0<sub>2</sub> Max
