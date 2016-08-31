@@ -3,21 +3,28 @@
 
 ## setup
 library(XML)
-my_path <- "C:/Users/JS033085/Desktop/Dash/data/"
-import_list <- 
-  ## cycling activities
-  c("cycling_2016-04-01_01", "cycling_2016-04-01_02", "cycling_2016-04-04_01", 
-    "cycling_2016-04-04_02", "cycling_2016-04-05_01", "cycling_2016-04-05_02", 
-    "cycling_2016-04-05_03", "cycling_2016-05-10_01", "cycling_2016-05-10_02", 
-    ## running activities
-    "running_2015-04-11", "running_2015-04-18", "running_2015-05-09", 
-    "running_2016-01-14", "running_2016-01-30", "running_2016-02-06", 
-    "running_2016-02-13_01", "running_2016-02-13_02", "running_2016-02-15", 
-    "running_2016-02-20", "running_2016-03-05", "running_2016-03-12", 
-    "running_2016-03-16", "running_2016-03-19", "running_2016-03-26", 
-    "running_2016-04-02", "running_2016-04-09", "running_2016-04-16", 
-    "running_2016-04-23", "running_2016-04-30", "running_2016-05-07_01", 
-    "running_2016-05-07_02", "running_2016-05-09", "running_2016-05-14" )
+my_path <- "C:/Users/JS033085/Desktop/Temp/Garmin/data/"
+import_list <- c(
+  # ## cycling activities
+  # "cycling_2016-04-01_01", "cycling_2016-04-01_02", "cycling_2016-04-04_01", 
+  # "cycling_2016-04-04_02", "cycling_2016-04-05_01", "cycling_2016-04-05_02", 
+  # "cycling_2016-04-05_03", "cycling_2016-05-10_01", "cycling_2016-05-10_02", 
+  # "cycling_2016-06-24_01", "cycling_2016-06-24_02", 
+    
+  ## running activities
+  "running_2015-04-11", "running_2015-04-18", "running_2015-05-09", 
+  "running_2016-01-14", "running_2016-01-30", "running_2016-02-06", 
+  "running_2016-02-13_01", "running_2016-02-13_02", "running_2016-02-15", 
+  "running_2016-02-20", "running_2016-03-05", "running_2016-03-12", 
+  "running_2016-03-16", "running_2016-03-19", "running_2016-03-26", 
+  "running_2016-04-02", "running_2016-04-09", "running_2016-04-16", 
+  "running_2016-04-23", "running_2016-04-30", "running_2016-05-07_01", 
+  "running_2016-05-07_02", "running_2016-05-09", "running_2016-05-14", 
+  "running_2016-05-28", "running_2016-06-02", "running_2016-06-11", 
+  "running_2016-06-14", "running_2016-07-04", "running_2016-07-06", 
+  "running_2016-07-07", "running_2016-07-09", "running_2016-07-12", 
+  "running_2016-07-13", #"running_2016-07-16", 
+  "running_2016-07-18", "running_2016-08-13", "running_2016-08-27")
 
 ## loop to import XML-formatted activities and then package results into data frame
 for(i in 1:length(import_list)){
@@ -28,6 +35,7 @@ for(i in 1:length(import_list)){
   parsed <- xmlToDataFrame(nodes <- getNodeSet(xml, "//ns:Trackpoint", "ns"), stringsAsFactors=F)
   
   ## clean up time stamp
+  parsed$Date <- substr(parsed$Time,1,10)
   parsed$Time <- substr(parsed$Time,12,19)
   parsed$Elapsed_Seconds <- as.numeric(substr(parsed$Time,1,2)) * 60 * 60 + as.numeric(substr(parsed$Time,4,5)) * 60 + as.numeric(substr(parsed$Time,7,8))
   parsed$Elapsed_Seconds <- parsed$Elapsed_Seconds - min(parsed$Elapsed_Seconds) # normalize to zero
@@ -57,7 +65,7 @@ for(i in 1:length(import_list)){
   ## update data frame with new XML data set
   else {df <- rbind(df, parsed)}
 }
-  
+
 ## split position field into latitude and longitude
 lat_long <- data.frame(do.call('rbind', strsplit(as.character(df$Position),'-',fixed=TRUE)), stringsAsFactors=F)
 names(lat_long) <- c("Latitude", "Longitude")
@@ -80,6 +88,9 @@ for(j in 2:nrow(df)) {
     df$Longitude[j] <- df$Longitude[j-1]
   }
 }; rm(j)
+
+## slight re-arrange
+df <- data.frame(Time=df$Time, Date=df$Date, df[,!(names(df) %in% c("Time", "Date"))])
 
 ## save out detailed forerunner log
 write.csv(df, "detailed_forerunner_log.csv", row.names=F)
