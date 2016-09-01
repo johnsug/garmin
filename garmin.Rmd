@@ -66,6 +66,11 @@ f$HeartRateBpm <- as.numeric(f$HeartRateBpm)
 a <- d[Activity_Type=="Running"][, .(Date=Date, Distance=Distance, Time=Time, MPH=MPH, Pace=Pace, HR=Max_HR, V02=V02_Max)]
 a$Date <- as.Date(a$Date, format="%m/%d/%Y")
 a$HR <- as.numeric(a$HR)
+
+today <- Sys.Date()
+dates_4_weeks <- today-27
+dates_6_months <- today-182
+dates_12_months <- today-365
 ```
 
 
@@ -320,40 +325,116 @@ Row {.tabset .tabset-fade}
 ### Heart Rate
 
 ```{r heart rate plot}
-ggplot(dat=a[!is.na(HR)], aes(x=Date, y=HR)) + 
-  geom_line(col="gray") + 
-  geom_point(size=2) + 
-  stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-  scale_x_date(date_breaks="2 months", limits=c(range(a$Date, max(a$Date+30))), date_labels = "%b %d")
-
-ggplotly()
+shinyApp(
+  ui = fillPage(
+    radioButtons("hr", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
+    plotlyOutput("hr_plot")),
+ 
+  server = function(input, output) {
+    
+    ## filter data based on radio buttons
+    plot_dat <- reactive({
+      pd <- a[!is.na(HR)]
+      if(input$hr==1) {pd <- pd[Date > dates_4_weeks]}
+      if(input$hr==6) {pd <- pd[Date > dates_6_months]}
+      if(input$hr==12) {pd <- pd[Date > dates_12_months]}
+      pd
+    })
+    
+    ## build ggplot, then wrap with ggplotly
+    gg <- reactive({
+      pd <- plot_dat()
+      g <- ggplot(pd, aes(x=Date, y=HR)) + 
+              geom_line(col="gray") + 
+              geom_point(size=2) + 
+              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
+              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
+      ggplotly(g)
+    })
+    
+    ## render plot
+    output$hr_plot <- renderPlotly(
+      gg()
+    )
+  }
+)
 ```
 
 ### Pace
 
 ```{r pace plot}
 ## flip between pace and MPH
-## need to filter dates!!
 
-ggplot(dat=a, aes(x=Date, y=MPH)) + 
-  geom_line(col="gray") + 
-  geom_point(size=2) + 
-  stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-  scale_x_date(date_breaks="2 months", limits=c(range(a$Date, max(a$Date+30))), date_labels = "%b %d")
+shinyApp(
+  ui = fillPage(
+    radioButtons("pace", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
+    plotlyOutput("pace_plot")),
 
-ggplotly()
+  server = function(input, output) {
+
+    ## filter data based on radio buttons
+    plot_dat <- reactive({
+      pd <- a
+      if(input$pace==1) {pd <- pd[Date > dates_4_weeks]}
+      if(input$pace==6) {pd <- pd[Date > dates_6_months]}
+      if(input$pace==12) {pd <- pd[Date > dates_12_months]}
+      pd
+    })
+
+    ## build ggplot, then wrap with ggplotly
+    gg <- reactive({
+      pd <- plot_dat()
+      g <- ggplot(pd, aes(x=Date, y=MPH)) + 
+              geom_line(col="gray") + 
+              geom_point(size=2) + 
+              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
+              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
+      ggplotly(g)
+    })
+    
+    ## render plot
+    output$pace_plot <- renderPlotly(
+      gg()
+    )
+  }
+)
 ```
 
 
 ### V0<sub>2</sub> Max
 
 ```{r v02 max plot}
-ggplot(dat=a, aes(x=Date, y=V02)) + 
-  geom_line(col="gray") + 
-  geom_point(size=2) + 
-  stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-  scale_x_date(date_breaks="2 months", limits=c(range(a$Date, max(a$Date+30))), date_labels = "%b %d")
+shinyApp(
+  ui = fillPage(
+    radioButtons("v02", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
+    plotlyOutput("v02_plot")),
 
-ggplotly()
+  server = function(input, output) {
+
+    ## filter data based on radio buttons
+    plot_dat <- reactive({
+      pd <- a
+      if(input$v02==1) {pd <- pd[Date > dates_4_weeks]}
+      if(input$v02==6) {pd <- pd[Date > dates_6_months]}
+      if(input$v02==12) {pd <- pd[Date > dates_12_months]}
+      pd
+    })
+
+    ## build ggplot, then wrap with ggplotly
+    gg <- reactive({
+      pd <- plot_dat()
+      g <- ggplot(pd, aes(x=Date, y=V02)) + 
+              geom_line(col="gray") + 
+              geom_point(size=2) + 
+              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
+              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
+      ggplotly(g)
+    })
+    
+    ## render plot
+    output$v02_plot <- renderPlotly(
+      gg()
+    )
+  }
+)
 ```
-
