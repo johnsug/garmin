@@ -26,6 +26,10 @@ library(Benchmarking)     ## efficient frontier analysis
 library(xts)              ## extended time series functionality
 library(formattable)      ## formatting
 
+# shortcut wrappers
+DF <- function(...) { data.frame(...) }
+DT <- function(...) { data.table(...) }
+
 # miles per hour (MPH) to pace custom function
 mph_to_pace <- function(mph){
   pace <- 60/mph
@@ -94,20 +98,12 @@ Introduction
 Changepoint Analysis
 =======================================================================
 
-Row {data-height=200}
------------------------------------------------------------------------
-
 <h4>Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes
 to the values of a time series. Specifically, the methods are used to determine changes in the distribution of values, usually in terms of the average values of the variance of the values. Changepoint analyis is often used to evaluate deviations in manufacturing processes, medical devices, and website traffic.
 
 In this example, I'm using changepoint analysis to determine shifts in the intensity of my runs, and to visually split each run into different segments so that I can quickly pick up on macro-level trends and see how my intensity changes over the course of each run.
  
-Use the drop down menu to select different runs.</h4>
-
-Row
------------------------------------------------------------------------
-
-### 
+Use the drop down menu to select different runs.</h4><br><br>
 
 ```{r changepoint analysis}
 ###http://rmarkdown.rstudio.com/flexdashboard/shiny.html
@@ -238,29 +234,39 @@ shinyApp(
 Efficient Frontier
 =======================================================================
 
-Row {data-height=200}
------------------------------------------------------------------------
-
 <h4>Efficient frontiers, sometimes referred to as production-possibility frontiers, are representations of optimal resource allocations, given existing levels of resources. While these frontiers are typically used in business management or economic analyses, their applications can be much broader.
 
-In this example, I wanted to use efficient frontiers to determine how efficent each of my runs are, compared to runs from my recent history. I employ a mathematical technique called data envelopment analysis in order to create efficiency scores, using as inputs how far I ran and my average running pace. After calculating my personal efficient frontier, I can then plot each individual run and determine how efficient each run is. The efficient frontier can then help illustrate a) how much further I should have gone, or b) what my pace should have been, if i was running "optimally."
-
-
-Row
------------------------------------------------------------------------
-
-### Efficient Frontier
+In this example, I wanted to use efficient frontiers to determine how efficent each of my runs are, compared to runs from my recent history. I employ a mathematical technique called data envelopment analysis in order to create efficiency scores, using as inputs how far I ran and my average running pace. After calculating my personal efficient frontier, I can then plot each individual run and determine how efficient each run is. The efficient frontier can then help illustrate a) how much further I should have gone, or b) what my pace should have been, if i was running "optimally."</h4><br><br>
 
 ```{r efficient frontier}
 shinyApp(
   ui = 
     fillPage(
+      
       ## control widgets
-      fluidRow(box(), width=3), 
+      fluidRow(
+        column(6, radioButtons("frontier", label="Time horizon for frontier:", 
+                               choices=list("4 weeks"=1, "6 months"=6, "12 months"=12, "All Time"=999), 
+                               inline=T, selected=12)),
+        ### make dynamic !!!!
+        column(6, radioButtons("dea_points", label="Time horizon for data points:", 
+                               choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), 
+                               inline=T, selected=12))
+      ),
+      
+      ###
+      fluidRow(box(), width=3), ### add "how to read" section
                box(plotlyOutput("dea_plot"), width=9)
   ),
   
   server = function(input, output) {
+    
+    ## data for efficient frontier
+    dea_dat <- reactive({
+      ddat <- dat
+    })
+    
+    ## subset data points
     
     ## build efficient frontier
     e <- dea(dat$Distance, dat$MPH, RTS=2) ## rts = variable returns to scale
@@ -297,7 +303,7 @@ shinyApp(
 Calendar Heatmap
 =======================================================================
 
-Inspired by Github's productivity heatmap, this widget quickly shows which days I've run throughout the year (picking up on day-of-the-week trends) and illustrates daily mileage by way of the heatmap.<br>
+<h4>Inspired by Github's productivity heatmap, this widget quickly shows which days I've run throughout the year (picking up on day-of-the-week trends) and illustrates daily mileage by way of the heatmap.</h4><br><br>
 
 ```{r calendar heatmap}
 shinyApp(
@@ -309,130 +315,57 @@ shinyApp(
                    datevar="Date", 
                    numvar="Distance", 
                    chartid="Calendar", 
-                   options=list(width=1000, height=200, title="Annual Activity"))
+                   options=list(width=1000, height=200, title="Annual Activity (in Miles)"))
     })
   }
 )
 ```
+
 
 
 Trend Analysis
 =======================================================================
 
-Row {.tabset .tabset-fade}
------------------------------------------------------------------------
+<h4>(Real simple linear trend analysis right now, will work on something a bit more specific before showing to Garmin...)</h4><br><br>
 
-### Heart Rate
+```{r trend plot}
+## add pace: flip between pace and MPH
+## reform V02 as V0<sub>2</sub> Max
+## spell out HR = heart rate
+## better forecasting algorithm
 
-```{r heart rate plot}
 shinyApp(
   ui = fillPage(
-    radioButtons("hr", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
-    plotlyOutput("hr_plot")),
+    radioButtons("trend_radios", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
+    plotlyOutput("trend_plots")),
  
   server = function(input, output) {
     
     ## filter data based on radio buttons
     plot_dat <- reactive({
-      pd <- a[!is.na(HR)]
-      if(input$hr==1) {pd <- pd[Date > dates_4_weeks]}
-      if(input$hr==6) {pd <- pd[Date > dates_6_months]}
-      if(input$hr==12) {pd <- pd[Date > dates_12_months]}
-      pd
-    })
-    
-    ## build ggplot, then wrap with ggplotly
-    gg <- reactive({
-      pd <- plot_dat()
-      g <- ggplot(pd, aes(x=Date, y=HR)) + 
-              geom_line(col="gray") + 
-              geom_point(size=2) + 
-              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
-      ggplotly(g)
-    })
-    
-    ## render plot
-    output$hr_plot <- renderPlotly(
-      gg()
-    )
-  }
-)
-```
-
-### Pace
-
-```{r pace plot}
-## flip between pace and MPH
-
-shinyApp(
-  ui = fillPage(
-    radioButtons("pace", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
-    plotlyOutput("pace_plot")),
-
-  server = function(input, output) {
-
-    ## filter data based on radio buttons
-    plot_dat <- reactive({
       pd <- a
-      if(input$pace==1) {pd <- pd[Date > dates_4_weeks]}
-      if(input$pace==6) {pd <- pd[Date > dates_6_months]}
-      if(input$pace==12) {pd <- pd[Date > dates_12_months]}
+      if(input$trend_radios==1) {pd <- pd[Date > dates_4_weeks]}
+      if(input$trend_radios==6) {pd <- pd[Date > dates_6_months]}
+      if(input$trend_radios==12) {pd <- pd[Date > dates_12_months]}
+      pd$Pace <- NULL
+      pd <- melt(pd, id.vars=c("Date", "Distance", "Time"), variable.name="Plot", value.name="Value")
       pd
     })
-
+    
     ## build ggplot, then wrap with ggplotly
     gg <- reactive({
       pd <- plot_dat()
-      g <- ggplot(pd, aes(x=Date, y=MPH)) + 
-              geom_line(col="gray") + 
-              geom_point(size=2) + 
-              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
+      g <- ggplot(pd, aes(x=Date, y=Value)) + 
+             geom_line(col="gray") + 
+             geom_point(size=2) + 
+             stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
+             scale_x_date(date_breaks="3 months", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30))) + ## needs to be dynamic, based on input
+             facet_wrap(~Plot, nrow=1, scales="free_y")
       ggplotly(g)
     })
     
     ## render plot
-    output$pace_plot <- renderPlotly(
-      gg()
-    )
-  }
-)
-```
-
-
-### V0<sub>2</sub> Max
-
-```{r v02 max plot}
-shinyApp(
-  ui = fillPage(
-    radioButtons("v02", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
-    plotlyOutput("v02_plot")),
-
-  server = function(input, output) {
-
-    ## filter data based on radio buttons
-    plot_dat <- reactive({
-      pd <- a
-      if(input$v02==1) {pd <- pd[Date > dates_4_weeks]}
-      if(input$v02==6) {pd <- pd[Date > dates_6_months]}
-      if(input$v02==12) {pd <- pd[Date > dates_12_months]}
-      pd
-    })
-
-    ## build ggplot, then wrap with ggplotly
-    gg <- reactive({
-      pd <- plot_dat()
-      g <- ggplot(pd, aes(x=Date, y=V02)) + 
-              geom_line(col="gray") + 
-              geom_point(size=2) + 
-              stat_smooth(method="lm", fill="royalblue", alpha=.3, fullrange=T) + 
-              scale_x_date(date_breaks="2 weeks", date_labels="%b %d", limits=range(pd$Date, max(pd$Date+30)))
-      ggplotly(g)
-    })
-    
-    ## render plot
-    output$v02_plot <- renderPlotly(
+    output$trend_plots <- renderPlotly(
       gg()
     )
   }
