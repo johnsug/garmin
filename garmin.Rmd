@@ -72,8 +72,8 @@ a$Date <- as.Date(a$Date, format="%m/%d/%Y")
 a$HR <- as.numeric(a$HR)
 
 today <- Sys.Date()
-dates_4_weeks <- today-27
-dates_6_months <- today-182
+dates_2_months <- today-60
+dates_6_months <- today-180
 dates_12_months <- today-365
 ```
 
@@ -82,7 +82,7 @@ dates_12_months <- today-365
 Introduction
 =======================================================================
 
-<h4>I am a runner and a data junkie, and really love analyzing my runs with the data recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch. The [Garmin Connect](http://connect.garmin.com) dashboards that come with the watch are great, however when I can't find the insights I want, I do my own statistical modeling. This dashboard demonstrates some of the advanced analytics I've developed using my personal running data. The tabs at the top of the dashboard link to different self-contained projects I've come up with:
+<h4>I am a runner and a data junkie, and really love analyzing my runs with the data recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch and heart rate monitor. The [Garmin Connect](http://connect.garmin.com) dashboards that come with the watch are great, however when I can't find the insights I want, I do my own statistical modeling. This dashboard demonstrates some of the advanced analytics I've developed using my personal running data. The tabs at the top of the dashboard link to different self-contained projects I've come up with:
   
 * Efficient Frontier - compares activities from recent history and evaluates how efficient each run is to the aggregate
 * Changepoint Analysis - evaluates changes in performance during recorded activities
@@ -245,13 +245,12 @@ shinyApp(
       
       ## control widgets
       fluidRow(
-        column(6, radioButtons("frontier", label="Time horizon for frontier:", 
-                               choices=list("4 weeks"=1, "6 months"=6, "12 months"=12, "All Time"=999), 
-                               inline=T, selected=12)),
-        ### make dynamic !!!!
-        column(6, radioButtons("dea_points", label="Time horizon for data points:", 
-                               choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), 
-                               inline=T, selected=12))
+        column(6, radioButtons("frontier", 
+                               label="Time horizon for frontier:", 
+                               choices=list("2 months"=2, "6 months"=6, "12 months"=12, "All Time"=999), 
+                               inline=T, 
+                               selected=12)),
+        column(6, uiOutput("dea_points"))
       ),
       
       ###
@@ -261,37 +260,86 @@ shinyApp(
   
   server = function(input, output) {
     
-    ## data for efficient frontier
-    dea_dat <- reactive({
-      ddat <- dat
+    ## adjust time horizon for points, based on selected horizon for efficient frontier
+    output$dea_points <- renderUI({
+      
+      ## dynamically build choices list
+      if(input$frontier==2)              { dea_list <- list("2 months"=2) }
+      if(input$frontier==6)              { dea_list <- list("2 months"=2, "6 months"=6) }
+      if(input$frontier %in% c(12, 999)) { dea_list <- list("2 months"=2, "6 months"=6, "12 months"=12) }
+      
+      ## dynamically choose (max) value for selected radio buttion
+      dea_selected <- c(2,6,12)[length(dea_list)]
+      
+      ## dynamic radio button widget
+      radioButtons("dea_points", label="Time horizon for data points:", choices=dea_list, inline=T, selected=dea_selected)
+      })
+    
+    ## find efficiency scores
+    eff_dat <- reactive({
+      
+      ## call data
+      dea_dat <- dat
+      
+      ## filter based on desired experience period
+      if(input$frontier==2)  { dea_dat <- subset(dea_dat, Date >= dates_2_months)  }
+      if(input$frontier==6)  { dea_dat <- subset(dea_dat, Date >= dates_6_months)  }
+      if(input$frontier==12) { dea_dat <- subset(dea_dat, Date >= dates_12_months) }
+      
+      ## fit dea model
+      #dea_model <- dea(dea_dat$Distance, dea_dat$MPH, RTS=2) ## rts = variable returns to scale
+      dea_model <- dea(dea_dat$Distance, dea_dat$MPH, RTS=2) ## 2 = decreasing returns to scale
+      
+      # dea_dat$Avg_HR <- as.numeric(dea_dat$Avg_HR)
+      # dea_dat$Elevation_Gain <- as.numeric(dea_dat$MPH)
+      # dea_dat$Pace <- as.Date(dea_dat$Pace, format="%h:%M")
+      # dea.plot.frontier(dea_dat$Avg_HR, dea_dat$Elevation_Gain, txt=TRUE)
+      # names(dea_dat)
+      
+      
+      ## parse efficiency scores
+      dea_dat$Efficiency <- dea_model$eff
+      
+      ## return data frame
+      dea_dat
     })
     
-    ## subset data points
-    
     ## build efficient frontier
-    e <- dea(dat$Distance, dat$MPH, RTS=2) ## rts = variable returns to scale
-    dat$Efficiency <- e$eff
-    frontier <- data.frame(x=dat$Distance[e$eff==1], y=dat$MPH[e$eff==1])
-    frontier <- frontier[order(frontier$x),]
-    frontier <- frontier[!is.na(frontier$x),]
+    frontier <- reactive({
+      my_dat <- eff_dat()
+      frontier <- data.frame(x=my_dat$Distance[my_dat$Efficiency==1], y=my_dat$MPH[my_dat$Efficiency==1])
+      frontier <- frontier[order(frontier$x),]
+      frontier <- frontier[!is.na(frontier$x),]
+      slope <- summary(lm(tail(y,2)~tail(x,2), data=frontier))$coefficients[2]
+      if(is.na(slope)) { slope <- frontier$y/frontier$x}
+      inc <- (ceiling(max(frontier$x)) - max(frontier$x))*slope
+      frontier <- rbind(c(0,0), frontier, c(ceiling(max(my_dat$Distance)), max(frontier$y)+inc))
+      frontier
+    })
     
-    slope <- summary(lm(tail(y,2)~tail(x,2), data=frontier))$coefficients[2]
-    inc <- (ceiling(max(frontier$x)) - max(frontier$x))*slope
-    frontier <- rbind(c(0,0), frontier, c(ceiling(max(dat$Distance)), max(frontier$y)+inc))
+    ## efficency points
+    eff_points <- reactive({
+      points_dat <- eff_dat()
+      if(input$dea_points==2)  { points_dat <- subset(points_dat, Date >= dates_2_months)  }
+      if(input$dea_points==6)  { points_dat <- subset(points_dat, Date >= dates_6_months)  }
+      if(input$dea_points==12) { points_dat <- subset(points_dat, Date >= dates_12_months) }
+      points_dat
+    })    
     
     ## DEA plot -- needs a table or something off to the side
     output$dea_plot <- renderPlotly({
-      p <- plot_ly(dat, x=Distance, y=MPH, name="Activity", hoverinfo="text", 
-                   text=paste0(Start, 
-                               "<br>Average Pace: ", Pace, 
-                               "<br>Average MPH: ", MPH, 
-                               "<br>Distance: ", Distance, 
-                               "<br>Efficiency score: ", 
-                               round(Efficiency,2)), 
-                   mode="markers", marker=list(size=10), opacity=.75, showlegend=F) %>%
+      ## plot points
+      plot_ly(eff_points(), x=Distance, y=MPH, name="Activity", hoverinfo="text", 
+              text=paste0(Start, 
+                          "<br>Average Pace: ", Pace, 
+                          "<br>Average MPH: ", MPH, 
+                          "<br>Distance: ", Distance, 
+                          "<br>Efficiency score: ", 
+                          round(Efficiency,2)), 
+              mode="markers", marker=list(size=10), opacity=.75, showlegend=F) %>%
         layout(xaxis=list(title="Distance (Miles)"), yaxis=list(title="Speed (MPH)"))
-      add_trace(p, x=frontier$x, y=frontier$y, name="Frontier", mode="lines", 
-                opacity=.3, showlegend=F)
+      ## plot frontier
+      add_trace(p, x=frontier()$x, y=frontier()$y, name="Frontier", mode="lines", opacity=.3, showlegend=F)
       })
     }
 )
@@ -326,7 +374,9 @@ shinyApp(
 Trend Analysis
 =======================================================================
 
-<h4>(Real simple linear trend analysis right now, will work on something a bit more specific before showing to Garmin...)</h4><br><br>
+<h4>(Real simple linear trend analysis right now, will work on something a bit more specific before showing to Garmin...)
+
+(Also, explain what each metric is; perhaps also add pace and make it a 2x2 plot?)</h4><br><br>
 
 ```{r trend plot}
 ## add pace: flip between pace and MPH
@@ -336,15 +386,29 @@ Trend Analysis
 
 shinyApp(
   ui = fillPage(
-    radioButtons("trend_radios", label="Historic period:", choices=list("4 weeks"=1, "6 months"=6, "12 months"=12), inline=T, selected=12),
+    uiOutput("trend_radios"),
     plotlyOutput("trend_plots")),
  
   server = function(input, output) {
     
+    ## adaptive radio buttons
+    output$trend_radios <- renderUI({
+      pace_check <- sum(!is.na(a$MPH[a$Date > dates_2_months]))
+      hr_check <- sum(!is.na(a$HR[a$Date > dates_2_months]))
+      vo2_check <- sum(!is.na(a$V02[a$Date > dates_2_months])) 
+      
+      ## hide if less than 4 data points
+      if(pace_check < 4 || hr_check < 4 || hr_check < 4) { flex_list <- list("6 months"=6, "12 months"=12) }
+      else { flex_list <- list("2 months"=2, "6 months"=6, "12 months"=12) }
+      
+      ## return UI widget
+      radioButtons("trend_radios", label="Historic period:", choices=flex_list, inline=T, selected=12)
+    })
+    
     ## filter data based on radio buttons
     plot_dat <- reactive({
       pd <- a
-      if(input$trend_radios==1) {pd <- pd[Date > dates_4_weeks]}
+      if(input$trend_radios==2) {pd <- pd[Date > dates_2_months]}
       if(input$trend_radios==6) {pd <- pd[Date > dates_6_months]}
       if(input$trend_radios==12) {pd <- pd[Date > dates_12_months]}
       pd$Pace <- NULL
