@@ -8,23 +8,32 @@ output:
 runtime: shiny
 ---
 
+```{r fix list}
+# update labels in changepoint table
+# add points to benchmark plot
+# explain confidence interval
+# (do period/period on linear model? or just raw values?)
+# change "value" label to something like "metric value"
+# need to go back and bring running data from september onwards (make sure calendar heatmap remains 2016 only...)
+# on trend page, mentions side-by-side comparison... 
+# switch radios with dropboxes (to enable more months?)
+```
+
 ```{r setup}
 library(flexdashboard)    ## dashboard framework
 library(shinydashboard)   ## more dashboard framework
 library(shiny)            ## dashboard widgets
 library(htmlwidgets)      ## data viz
 library(plotly)           ## data viz
-library(leaflet)          ## data viz (maps)
 library(ggplot2)          ## data viz
 library(dygraphs)         ## data viz (plot used in changepoint study)
 library(googleVis)        ## data viz (calendar heatmap)
-library(lubridate)        ## manipulating dates data
+library(changepoint)      ## changepoint analysis
 library(data.table)       ## data munging
 library(plyr)             ## data munging
-library(changepoint)      ## changepoint
-library(Benchmarking)     ## efficient frontier analysis
-library(xts)              ## extended time series functionality
 library(formattable)      ## formatting
+library(lubridate)        ## manipulating dates data
+library(xts)              ## extended time series functionality
 
 # shortcut wrappers
 DF <- function(...) { data.frame(...) }
@@ -57,8 +66,8 @@ raw_pace <- function(pace){
   return(raw)
 }
 
-
-# load datasets
+## load datasets
+# daily log (agregated)
 d <- fread("forerunner_log.csv")
 d <- d[!is.na(Distance)]
 names(d) <- gsub(" ", "_", names(d))
@@ -67,16 +76,17 @@ d$MPH <- pace_to_mph(d$Pace)
 d$Date <- as.Date(substr(d$Start,6,100), format="%b %d, %Y")
 d$Mins <- 1/d$MPH * d$Distance * 60
 d$Raw_Pace <- raw_pace(d$Pace)
-
-dat <- as.data.frame(d[Activity_Type=="Running"][Max_HR!="--"]) ## df needed for DEA package
+dat <- DT(d)[Activity_Type=="Running"][Max_HR!="--"]
 dat$Full_Activity_Name <- paste(dat$Activity_Name, "-", dat$Start)
 
+# detailed logs
 f <- fread("detailed_forerunner_log.csv")
 f$Time_Stamp <- paste(f$Date, f$Time)
 f$Time_Stamp <- as.POSIXct(f$Time_Stamp)
 f$DistanceMeters <- as.numeric(f$DistanceMeters)
 f$HeartRateBpm <- as.numeric(f$HeartRateBpm)
 
+# personal records
 pr <- DF(fread("personal_records.csv"))
 is_hours <- substr(pr$Time,2,2)==":"
 pr$Time <- strsplit(pr$Time, ":")
@@ -91,11 +101,17 @@ for(i in 1:nrow(pr)){
 }; rm(i)
 pr$Time <- as.numeric(pr$Time)
 
-a <- d[Activity_Type=="Running"][, .(Date=Date, Distance=Distance, Time=Time, MPH=MPH, Pace=Pace, 
-                                     HR=Max_HR, V02=V02_Max)]
-a$Date <- as.Date(a$Date, format="%m/%d/%Y")
-a$HR <- as.numeric(a$HR)
+a <- d[Activity_Type=="Running"][, .(Date=as.Date(Date, format="%m/%d/%Y"), 
+                                     Distance=Distance, 
+                                     Time=Time, 
+                                     Average_Heart_Rate=as.numeric(Max_HR), 
+                                     Average_Pace=raw_pace(Pace), 
+                                     Miles_Per_Hour=MPH, 
+                                     Training_Effect=as.numeric(Training_Effect), 
+                                     V02_Max=V02_Max)]
+names(a) <- gsub("_", " ", names(a))
 
+# date vectors
 today <- Sys.Date()
 dates_2_months <- today-60
 dates_6_months <- today-180
@@ -107,12 +123,12 @@ dates_12_months <- today-365
 Introduction
 =======================================================================
 
-<h4>I am a runner and a data junkie, and really love analyzing my runs with the data recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch and heart rate monitor. The [Garmin Connect](http://connect.garmin.com) dashboards that come with the watch are great, however when I can't find the insights I want, I do my own statistical modeling. This dashboard demonstrates some of the advanced analytics I've developed using my personal running data. The tabs at the top of the dashboard link to different self-contained projects I've come up with:
+<h4>I am a runner and a data junkie, and really love analyzing my runs recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch and heart rate monitor. The [Garmin Connect](http://connect.garmin.com) dashboards that sync with my watch are great, however when I can't find the insights I want, I perform my own statistical modeling using my personal running data. This dashboard demonstrates some of the analytical views I've come up with:
   
-* Changepoint Analysis - evaluates changes in performance during recorded activities (single run)
-* Efficient Frontier - compares activities from recent history and evaluates how efficient each run is to the aggregate (many runs)
-* Calendar Heatmap - quickly illustrates annual activity (annual runs)
-* Trend Analysis - reviews historical activity metrics (heart rate, pace, V0<sub>2</sub> max, etc)
+* <a href=#changepoint-analysis>Changepoint Analysis</a> - evaluates changes in intensity during selected activities
+* <a href=#pace-benchmarking>Pace Benchmarking</a> - compares recent runs to historical averages and records
+* <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity (annual runs)
+* <a href=#trend-analysis>Trend Analysis</a> - reviews historical activity metrics (heart rate, pace, V0<sub>2</sub> max, etc)
 </h4> 
 
 <br>
@@ -123,7 +139,7 @@ Introduction
 Changepoint Analysis
 =======================================================================
 
-```{r changepoint analysis}
+```{r changepoint}
 ###http://rmarkdown.rstudio.com/flexdashboard/shiny.html
 ## I'm fighting limiting this to five segments, because I want to hold onto the colors.... perhaps I should just let it go, use PELT, and let the user determine the minimum segment length...
 
@@ -228,7 +244,7 @@ shinyApp(
       merged <- cbind(ts_data=ts_dat, means_data=xts(means, time(ts_dat)))
       
       ## plot -- "goldfish" color palette from http://www.colourlovers.com/palette/92095/Giant_Goldfish
-      dygraph(merged, xlab="Time in Hours:Minutes", ylab="Running Speed (MPH)") %>% 
+      dygraph(merged, xlab="Time in Hours : Minutes", ylab="Running Speed (MPH)") %>% 
         dyShading(from=time(ts_dat[cpts[1]]), to=time(ts_dat[cpts[2]]), 
                   color="rgba(105, 210, 231, 0.40)") %>% 
         dyShading(from=time(ts_dat[cpts[2]]), to=time(ts_dat[cpts[3]]), 
@@ -261,16 +277,15 @@ shinyApp(
 ```
 
 <h4>Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes
-to the values of a time series. Specifically, the methods are used to determine changes in the distribution of values, usually in terms of the average values of the variance of the values. Changepoint analyis is often used to evaluate deviations in manufacturing processes, medical devices, and website traffic.
+to the values of a time series. Such techniques are commonly used to determine deviations in manufacturing processes, medical device measurements, and website traffic.
 
-In this example, I'm using changepoint analysis to determine shifts in the intensity of my runs, and to visually split each run into different segments so that I can quickly pick up on macro-level trends and see how my intensity changes over the course of each activity.</h4>
+In this example, I'm using changepoint analysis to determine shifts in the intensity of recorded runs, in terms of instanteous speed. (While runners are usually more concerned about average pace, looking at their speed in terms of miles per hour makes more sense in this example.) Each segment is displayed visually, and the associated table details summary statistics from each significant shift in intensity.</h4>
 
 
-Efficient Frontier
+Pace Benchmarking
 =======================================================================
 
-
-```{r efficient frontier}
+```{r benchmarking}
 
 shinyApp(
   ui = 
@@ -304,17 +319,17 @@ shinyApp(
     })
     
     ## build "best pace" frontier using personal records file
-    frontier <- DT(pr)[, .(x=Distance, y=Time)]
-    slope <- lm(tail(frontier$y,2)~tail(frontier$x,2))$coefficients[2]
-    if(is.na(slope)) { slope <- frontier$y/frontier$x}
-    inc <- (ceiling(max(frontier$x)) - max(frontier$x))*slope
-    frontier <- rbind(DF(x=0, y=0), frontier, DF(x=ceiling(max(dat$Distance)), y=max(frontier$y)+inc))
+    best_pace <- DT(pr)[, .(x=Distance, y=Time)]
+    slope <- lm(tail(best_pace$y,2)~tail(best_pace$x,2))$coefficients[2]
+    if(is.na(slope)) { slope <- best_pace$y/best_pace$x}
+    inc <- (ceiling(max(best_pace$x)) - max(best_pace$x))*slope
+    best_pace <- rbind(DF(x=0, y=0), best_pace, DF(x=ceiling(max(dat$Distance)), y=max(best_pace$y)+inc))
     
     ## fit average pace OLS regression
     avg_pace <- reactive({
       avg_dat <- eff_dat()
       avg <- lm(Mins~Distance, dat=avg_dat)
-      upper_bound <- max(frontier$x)
+      upper_bound <- max(best_pace$x)
       avg_frontier <- rbind(DF(x=0, y=avg$coefficients[1]), 
                             DF(x=upper_bound, 
                                y=max(avg$coefficients[1] + upper_bound*avg$coefficients[2])))
@@ -327,9 +342,9 @@ shinyApp(
       ## plot points
       plot_ly(eff_dat(), x=Distance, y=Mins, name="Activity", hoverinfo="text", 
               text=paste0(Start, 
-                          "<br>Average Pace: ", Pace, 
+                          "<br>Distance: ", Distance, 
                           "<br>Elapsed Time: ", Time, 
-                          "<br>Distance: ", Distance), 
+                          "<br>Average Pace: ", Pace), 
               mode="markers", marker=list(size=10), opacity=.75, showlegend=F) %>%
         config(displayModeBar=F) %>% 
         layout(xaxis=list(title="Distance (Miles)", fixedrange=TRUE), 
@@ -340,7 +355,7 @@ shinyApp(
                 showlegend=T, line=list(width=5)) %>%
       
       ## plot best-pace line
-      add_trace(x=frontier$x, y=frontier$y, name="Best Pace", mode="lines", opacity=.3, 
+      add_trace(x=best_pace$x, y=best_pace$y, name="Best Pace", mode="lines", opacity=.3, 
                 showlegend=T, line=list(width=5))
         
       })
@@ -349,15 +364,13 @@ shinyApp(
 
 ```
 
-<h4>Efficient frontiers, sometimes referred to as production-possibility frontiers, are representations of optimal resource allocations, given existing levels of resources. While these frontiers are typically used in business management or economic analyses, their applications can be much broader.<br><br>
-
-In this example, I wanted to use efficient frontiers to determine how efficent each of my runs are, compared to runs from my recent history. I employ a mathematical technique called data envelopment analysis in order to create efficiency scores, using as inputs how far I ran and my average running pace. After calculating my personal efficient frontier, I can then plot each individual run and determine how efficient each run is. The efficient frontier can then help illustrate a) how much further I should have gone, or b) what my pace should have been, if i was running "optimally."</h4>
+<h4>In this plot, historical activities (blue dots) are compared to benchmarks of both historical best paces (green line) and average paces (gold line) from the selected time horizon.</h4>
 
 
 Calendar Heatmap
 =======================================================================
 
-```{r calendar heatmap}
+```{r heatmap}
 shinyApp(
   ui = fillPage(htmlOutput("heatmap")),
  
@@ -375,41 +388,41 @@ shinyApp(
 )
 ```
 
-<h4>Inspired by Github's productivity heatmap, this widget quickly shows which days I've run throughout the year (picking up on day-of-the-week trends) and illustrates daily mileage by way of the heatmap.</h4><br><br>
+<h4>This widget, inspired by Github's productivity heatmap, can be used to quickly illusrates day-of-the-week and week-to-week activity trends.</h4>
 
 
 
 Trend Analysis
 =======================================================================
 
-```{r trend plot}
-## add pace: flip between pace and MPH
-## reform V02 as V0<sub>2</sub> Max
-## spell out HR = heart rate
-## better forecasting algorithm
+```{r trend}
+activity_types <- sort(names(a)[-(1:3)])
 
 shinyApp(
   ui = fillPage(
-    uiOutput("trend_radios"),
-    plotlyOutput("trend_plots", height="300px"), 
-    textOutput("trend_text")),
- 
+    fluidRow(
+      box(uiOutput("trend_horizon"), width=4), 
+      box(selectInput("trend_box_1", "Plot 1 metric:", choices=activity_types, selected=activity_types[1]), width=3), 
+      box(selectInput("trend_box_2", "Plot 2 metric:", choices=activity_types, selected=activity_types[2]), width=3)), 
+    
+    fluidRow(
+      box(
+        plotlyOutput("trend_plot_1", height="275px"), 
+        HTML("<center><h4><font color=0000FF>"), textOutput("trend_text_1"), HTML("</center></h4></font>"), 
+        width=6), 
+    
+      box(
+        plotlyOutput("trend_plot_2", height="275px"), 
+        HTML("<center><h4><font color=0000FF>"), textOutput("trend_text_2"), HTML("</center></h4></font>"), 
+        width=6)
+    )),
+  
   server = function(input, output) {
     
-    ## trend script
-    change_table <- reactive({
-      pd <- plot_dat()
-      metrics <- DT(pd)[!is.na(Value), .(Start=head(Value,1), End=tail(Value,1)), by=Plot]
-      metrics$Change <- metrics$End - metrics$Start
-      metrics$Percent_Change <- metrics$End / metrics$Start - 1
-      metrics$Periodic_Change <- scales::percent(round(metrics$Percent_Change,3))
-      metrics[, .(Plot=Plot, Periodic_Change=Periodic_Change)]
-    })
-    
-    ## adaptive radio buttons
-    output$trend_radios <- renderUI({
-      pace_check <- sum(!is.na(a$MPH[a$Date > dates_2_months]))
-      hr_check <- sum(!is.na(a$HR[a$Date > dates_2_months]))
+    ## trend horizon adaptive radio buttons
+    output$trend_horizon <- renderUI({
+      pace_check <- sum(!is.na(a$`Miles Per Hour`[a$Date > dates_2_months]))
+      hr_check <- sum(!is.na(a$`Average Heart Rate`[a$Date > dates_2_months]))
       vo2_check <- sum(!is.na(a$V02[a$Date > dates_2_months])) 
       
       ## hide if less than 4 data points
@@ -421,45 +434,76 @@ shinyApp(
         }
       
       ## return UI widget
-      radioButtons("trend_radios", label="Historic period:", choices=flex_list, inline=T, selected=12)
+      radioButtons("trend_horizon", label="Time horizon:", choices=flex_list, inline=T, selected=12)
     })
     
     ## filter data based on radio buttons
     plot_dat <- reactive({
       pd <- a
-      pd$V02 <- NULL
-      if(input$trend_radios==2) {pd <- pd[Date > dates_2_months]}
-      if(input$trend_radios==6) {pd <- pd[Date > dates_6_months]}
-      if(input$trend_radios==12) {pd <- pd[Date > dates_12_months]}
+      if(input$trend_horizon==2) {pd <- pd[Date > dates_2_months]}
+      if(input$trend_horizon==6) {pd <- pd[Date > dates_6_months]}
+      if(input$trend_horizon==12) {pd <- pd[Date > dates_12_months]}
       pd$Pace <- NULL
       pd <- melt(pd, id.vars=c("Date", "Distance", "Time"), variable.name="Plot", value.name="Value")
       pd
     })
     
-    ## build ggplot, then wrap with ggplotly
-    gg <- reactive({
+    ## period trend change table
+    change_table <- reactive({
       pd <- plot_dat()
-      g <- ggplot(pd, aes(x=Date, y=Value)) + 
-             geom_line(col="gray") + 
-             geom_point(size=2) + 
-        #geom_text(dat=change_table, aes(text=paste0("Periodic Change = ", Pretty_Percent))) + 
-             ## lm, glm, gam, rlm, loess, 
-             stat_smooth(method="lm", col="orange3", fill="orange", alpha=.3, fullrange=T) + #royalblue
-             scale_x_date(date_breaks="2 months", date_labels="%b %d") +  
-             facet_wrap(~Plot, nrow=1, scales="free_y")
+      metrics <- DT(pd)[!is.na(Value), .(Start=head(Value,1), End=tail(Value,1)), by=Plot]
+      metrics$Change <- metrics$Start - metrics$End
+      metrics$Percent_Change <- round(metrics$Start / metrics$End - 1,3)
+      metrics$Periodic_Change <- scales::percent(metrics$Percent_Change)
+      metrics[, .(Plot=Plot, Periodic_Change=Periodic_Change)]
+    })
+    
+    ## plot #1: build ggplot then wrap with ggplotly
+    gg_01 <- reactive({
+      pd <- subset(plot_dat(), Plot==input$trend_box_1)
+      g1 <- ggplot(pd, aes(x=Date, y=Value)) + 
+              geom_line(col="gray") + 
+              geom_point(size=2) + 
+              ## lm, glm, gam, rlm, loess, 
+              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, fullrange=T) +
+              scale_x_date(date_breaks="2 months", date_labels="%b %d")
       
-      ggplotly(g)
+      ggplotly(g1)
+    })
+    
+    ## plot #2: build ggplot then wrap with ggplotly
+    gg_02 <- reactive({
+      pd <- subset(plot_dat(), Plot==input$trend_box_2)
+      g2 <- ggplot(pd, aes(x=Date, y=Value)) + 
+              geom_line(col="gray") + 
+              geom_point(size=2) + 
+              ## lm, glm, gam, rlm, loess, 
+              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, fullrange=T) + #royalblue
+              scale_x_date(date_breaks="2 months", date_labels="%b %d")
+      
+      ggplotly(g2)
     })
   
-    ## render plot
-    output$trend_plots <- renderPlotly(
-      gg() %>% config(displayModeBar = F)
+    ## render text
+    output$trend_text_1 <- renderText({
+      paste("Periodic change =", DT(change_table())[Plot==input$trend_box_1, Periodic_Change])
+    })
+    
+    output$trend_text_2 <- renderText({
+      paste("Periodic change =", DT(change_table())[Plot==input$trend_box_2, Periodic_Change])
+    })
+    
+    ## render plots
+    output$trend_plot_1 <- renderPlotly(
+      gg_01() %>% config(displayModeBar=F)
+    )
+    
+    output$trend_plot_2 <- renderPlotly(
+      gg_02() %>% config(displayModeBar=F)
     )
   }
 )
 ```
 
-<h4>Simple linear trend analysis</h4>
-
-**not to John: need to add in periodic trend some how (box? w/ each plot in its own, or just shiny dropdown?)
+<h4>This widget provides simple trend analysis, highlighting period-over-period changes in the specified metrics as well as provides simple linear trend modeling.</h4>
 
