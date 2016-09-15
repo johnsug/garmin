@@ -10,7 +10,7 @@ runtime: shiny
 
 ```{r fix list}
 # update labels in changepoint table
-# add points to benchmark plot
+# disable legend clickability on benchmark plot
 # explain confidence interval
 # (do period/period on linear model? or just raw values?)
 # change "value" label to something like "metric value"
@@ -340,23 +340,23 @@ shinyApp(
     output$mc_plot <- renderPlotly({
       
       ## plot points
-      plot_ly(eff_dat(), x=Distance, y=Mins, name="Activity", hoverinfo="text", 
+      plot_ly(eff_dat(), x=Distance, y=Mins, name="Individual Runs", hoverinfo="text", 
               text=paste0(Start, 
                           "<br>Distance: ", Distance, 
                           "<br>Elapsed Time: ", Time, 
                           "<br>Average Pace: ", Pace), 
-              mode="markers", marker=list(size=10), opacity=.75, showlegend=F) %>%
+              mode="markers", marker=list(size=10), opacity=.75, showlegend=T) %>%
         config(displayModeBar=F) %>% 
         layout(xaxis=list(title="Distance (Miles)", fixedrange=TRUE), 
                yaxis=list(title="Run Time (Minutes)", fixedrange=TRUE)) %>%
         
       ## plot average-pace line
       add_trace(x=avg_pace()$x, y=avg_pace()$y, name="Average Pace", mode="lines", opacity=.3, 
-                showlegend=T, line=list(width=5)) %>%
+                line=list(width=5)) %>%
       
       ## plot best-pace line
       add_trace(x=best_pace$x, y=best_pace$y, name="Best Pace", mode="lines", opacity=.3, 
-                showlegend=T, line=list(width=5))
+                line=list(width=5))
         
       })
     }

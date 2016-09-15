@@ -24,7 +24,8 @@ import_list <- c(
   "running_2016-06-14", "running_2016-07-04", "running_2016-07-06", 
   "running_2016-07-07", "running_2016-07-09", "running_2016-07-12", 
   "running_2016-07-13", #"running_2016-07-16", 
-  "running_2016-07-18", "running_2016-08-13", "running_2016-08-27")
+  "running_2016-07-18", "running_2016-08-13", "running_2016-08-27", 
+  "running_2016-09-03", "running_2016-09-06", "running_2016-09-10")
 
 ## loop to import XML-formatted activities and then package results into data frame
 for(i in 1:length(import_list)){
