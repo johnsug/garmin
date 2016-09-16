@@ -9,12 +9,9 @@ runtime: shiny
 ---
 
 ```{r fix list}
-# update labels in changepoint table
 # disable legend clickability on benchmark plot
 # explain confidence interval
 # (do period/period on linear model? or just raw values?)
-# change "value" label to something like "metric value"
-# need to go back and bring running data from september onwards (make sure calendar heatmap remains 2016 only...)
 # on trend page, mentions side-by-side comparison... 
 # switch radios with dropboxes (to enable more months?)
 ```
@@ -127,7 +124,7 @@ Introduction
   
 * <a href=#changepoint-analysis>Changepoint Analysis</a> - evaluates changes in intensity during selected activities
 * <a href=#pace-benchmarking>Pace Benchmarking</a> - compares recent runs to historical averages and records
-* <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity (annual runs)
+* <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity level
 * <a href=#trend-analysis>Trend Analysis</a> - reviews historical activity metrics (heart rate, pace, V0<sub>2</sub> max, etc)
 </h4> 
 
@@ -150,8 +147,8 @@ shinyApp(
     fillPage(
       selectInput("changepoint_list", "Choose Activity", choices=dat$Full_Activity_Name, width=400),
       fluidRow(
-        box(dygraphOutput("changepoint_plot", height="300px"), width=9),
-        box(formattableOutput("changepoint_table"), width=3))
+        box(dygraphOutput("changepoint_plot", height="300px"), width=8),
+        box(formattableOutput("changepoint_table"), width=4))
   ),
   
   ## server #####
@@ -198,7 +195,7 @@ shinyApp(
     cp_table_data <- reactive({
       cpts <- cp()
       cp_data <- changepoint_data()
-      td <- data.frame(Zone=1:5, Minutes=0, Distance_Miles=0, MPH=0, Avg_Pace=0, Avg_HeartRate=0)
+      td <- DF(Zone=1:5, Minutes=0, Distance_Miles=0, MPH=0, Avg_Pace=0, Avg_HeartRate=0)
       for(i in 1:5){
         td$Minutes[i] <- round((cp_data$Elapsed_Seconds[cpts[i+1]] - 
                                   cp_data$Elapsed_Seconds[cpts[i]])/60,1)
@@ -209,9 +206,9 @@ shinyApp(
         td$MPH[i] <- round(td$MPH[i],1)
         td$Avg_HeartRate[i] <- round(mean(cp_data$HeartRateBpm[cpts[i]:(cpts[i+1]-1)]))
       }
-      names(td) <- c("Zone", "Minutes", "Distance (Miles)", "Average MPH", "Average Pace", 
+      names(td) <- c("Zone", "Time (Minutes)", "Distance (Miles)", "Average Speed (MPH)", "Average Pace", 
                      "Average Heart Rate")
-      td[td$Minutes!=0,]
+      td[td$`Time (Minutes)`!=0,]
     })
     
     ## mean value time series
@@ -244,7 +241,7 @@ shinyApp(
       merged <- cbind(ts_data=ts_dat, means_data=xts(means, time(ts_dat)))
       
       ## plot -- "goldfish" color palette from http://www.colourlovers.com/palette/92095/Giant_Goldfish
-      dygraph(merged, xlab="Time in Hours : Minutes", ylab="Running Speed (MPH)") %>% 
+      dygraph(merged, xlab="Elapsed Time (Hours : Minutes)", ylab="Running Speed (MPH)") %>% 
         dyShading(from=time(ts_dat[cpts[1]]), to=time(ts_dat[cpts[2]]), 
                   color="rgba(105, 210, 231, 0.40)") %>% 
         dyShading(from=time(ts_dat[cpts[2]]), to=time(ts_dat[cpts[3]]), 
