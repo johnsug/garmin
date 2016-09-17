@@ -10,9 +10,7 @@ runtime: shiny
 
 ```{r fix list}
 # disable legend clickability on benchmark plot
-# explain confidence interval
 # (do period/period on linear model? or just raw values?)
-# on trend page, mentions side-by-side comparison... 
 # switch radios with dropboxes (to enable more months?)
 ```
 
@@ -462,7 +460,7 @@ shinyApp(
               geom_line(col="gray") + 
               geom_point(size=2) + 
               ## lm, glm, gam, rlm, loess, 
-              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, fullrange=T) +
+              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, formula=y ~ x + I(x^2)) + 
               scale_x_date(date_breaks="2 months", date_labels="%b %d")
       
       ggplotly(g1)
@@ -475,7 +473,7 @@ shinyApp(
               geom_line(col="gray") + 
               geom_point(size=2) + 
               ## lm, glm, gam, rlm, loess, 
-              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, fullrange=T) + #royalblue
+              stat_smooth(method="lm", col="blue", fill="royalblue", alpha=.3, formula=y ~ x + I(x^2)) + 
               scale_x_date(date_breaks="2 months", date_labels="%b %d")
       
       ggplotly(g2)
@@ -502,5 +500,5 @@ shinyApp(
 )
 ```
 
-<h4>This widget provides simple trend analysis, highlighting period-over-period changes in the specified metrics as well as provides simple linear trend modeling.</h4>
+<h4>This widget provides simple trend analysis, highlighting period-over-period changes in the specified metrics. The linear shift in trend (dark blue line) is fit with linear regression methods, while the light blue shading shows the 95% confidence interval for the linear trend line.</h4>
 
