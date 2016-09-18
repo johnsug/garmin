@@ -383,7 +383,7 @@ shinyApp(
 )
 ```
 
-<h4>This widget, inspired by Github's productivity heatmap, can be used to quickly illusrates day-of-the-week and week-to-week activity trends.</h4>
+<h4>This widget, inspired by Github's productivity heatmap, can be used to quickly illustrates day-of-the-week and week-to-week activity trends.</h4>
 
 
 
