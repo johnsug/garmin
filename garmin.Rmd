@@ -246,13 +246,13 @@ shinyApp(
 )
 ```
 
-<h4>This widget shows how one's fitness metrics are (hopefully) improving over a selected time horizon by way of trend analysis. The user has the ability to select from five metrics: average heart rate, average pace, average speed (MPH), training effect, and V0<sub>2</sub> max. After selecting a metric from the drop-down menus, the user's historical metric activity is plotted (black dots) and connected with a simple gray line. 
+<h4><a href=#changepoint-analysis><i class="fa fa-arrow-left"></i></a> <a href=#pace-benchmarking><i class="fa fa-arrow-right"></i></a><br>
+
+This widget shows how one's fitness metrics are (hopefully) improving over a selected time horizon by way of trend analysis. The user has the ability to select from five metrics: average heart rate, average pace, average speed (MPH), training effect, and V0<sub>2</sub> max. After selecting a metric from the drop-down menus, the user's historical metric activity is plotted (black dots) and connected with a simple gray line. 
 
 Linear regression methods are used to fit a trend line (dark blue line) to the data points. The light blue shading indicates the 95% confidence interval around the fitted trend line. The trend line suggests which direction the user's metrics are trending in the near future.
 
-Lastly, the percent change between the first and last activities in the selected time horizon is provided as the periodic change. 
-
-<br><a href=#changepoint-analysis><i class="fa fa-arrow-left"></i></a> <a href=#pace-benchmarking><i class="fa fa-arrow-right"></i></a></h4>
+Lastly, the percent change between the first and last activities in the selected time horizon is provided as the periodic change. </h4>
 
 
 
@@ -339,9 +339,9 @@ shinyApp(
 
 ```
 
-<h4>In this plot, historical activities (blue dots) are compared to benchmarks of both historical best paces (green line) and average paces (gold line) from the selected time horizon. 
+<h4><a href=#trend-analysis><i class="fa fa-arrow-left"></i></a> <a href=#calendar-heatmap><i class="fa fa-arrow-right"></i></a><br>
 
-<br><a href=#trend-analysis><i class="fa fa-arrow-left"></i></a> <a href=#calendar-heatmap><i class="fa fa-arrow-right"></i></a></h4>
+In this plot, historical activities (blue dots) are compared to benchmarks of both historical best paces (green line) and average paces (gold line) from the selected time horizon.</h4>
 
 
 
@@ -367,9 +367,11 @@ shinyApp(
 )
 ```
 
-<h4>This widget, inspired by Github's productivity heatmap, can be used to quickly illustrates day-of-the-week and week-to-week activity trends. 
+<h4><a href=#pace-benchmarking><i class="fa fa-arrow-left"></i></a> <a href=#changepoint-analysis><i class="fa fa-arrow-right"></i></a><br>
 
-<br><a href=#pace-benchmarking><i class="fa fa-arrow-left"></i></a> <a href=#changepoint-analysis><i class="fa fa-arrow-right"></i></a></h4>
+A heatmap is a graphical representation of data values which illustrates high/low values, by way of color, without explicitly displaying the numeric values. 
+
+This calendar heatmap displays both which days of the week/year I've run and how far I've run each day. (Yellow blocks indicate low milage days, green blocks indicate average mileage days, and dark-green blocks indicate high milage days). This heatmap is especially useful to hone in on day-of-the-week and week-to-week activity trends.</h4>
 
 
 
@@ -514,9 +516,8 @@ shinyApp(
 
 ```
 
-<h4>Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes
-to the values of a time series. Such techniques are commonly used to determine deviations in manufacturing processes, medical device measurements, and website traffic.
+<h4><a href=#calendar-heatmap><i class="fa fa-arrow-left"></i></a> <a href=#trend-analysis><i class="fa fa-arrow-right"></i></a><br>
 
-In this example, I'm using changepoint analysis to determine shifts in the intensity of recorded runs, in terms of instanteous speed. (While runners are usually more concerned about average pace, looking at their speed in terms of miles per hour makes more sense in this example.) Each segment is displayed visually, and the associated table details summary statistics from each significant shift in intensity. 
+Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes to the values of a time series. Such techniques are commonly used to determine deviations in manufacturing processes, medical device measurements, and website traffic.
 
-<br><a href=#calendar-heatmap><i class="fa fa-arrow-left"></i></a> <a href=#trend-analysis><i class="fa fa-arrow-right"></i></a></h4>
+In this example, I'm using changepoint analysis to determine shifts in the intensity of recorded runs, in terms of instanteous speed. (While runners are usually more concerned about average pace, looking at their speed in terms of miles per hour makes more sense in this example.) Each segment is displayed visually, and the associated table details summary statistics from each significant shift in intensity.</h4>
