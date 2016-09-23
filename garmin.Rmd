@@ -9,6 +9,7 @@ runtime: shiny
 ---
 
 ```{r fix list}
+# optimize for mobile viewing ???
 # disable legend clickability on benchmark plot ?
 # switch radios with dropboxes (to enable more months) ?
 ```
