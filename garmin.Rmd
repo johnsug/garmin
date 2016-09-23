@@ -372,7 +372,7 @@ shinyApp(
 
 A heatmap is a graphical representation of data values which illustrates high/low values, by way of color, without explicitly displaying the numeric values. 
 
-This calendar heatmap displays both which days of the week/year I've run and how far I've run each day. (Yellow blocks indicate low milage days, green blocks indicate average mileage days, and dark-green blocks indicate high milage days). This heatmap is especially useful to hone in on day-of-the-week and week-to-week activity trends.</h4>
+This calendar heatmap displays both which days of the week/year I've run and how far I've run each day. (Yellow blocks indicate low mileage days, green blocks indicate average mileage days, and dark-green blocks indicate high mileage days). This heatmap is especially useful to hone in on day-of-the-week and week-to-week activity trends.</h4>
 
 
 
@@ -521,4 +521,4 @@ shinyApp(
 
 Changepoint analysis, sometimes called changepoint detection, is a statistical method used to determine if and when there are nominal changes to the values of a time series. Such techniques are commonly used to determine deviations in manufacturing processes, medical device measurements, and website traffic.
 
-In this example, I'm using changepoint analysis to determine shifts in the intensity of recorded runs, in terms of instanteous speed. (While runners are usually more concerned about average pace, looking at their speed in terms of miles per hour makes more sense in this example.) Each segment is displayed visually, and the associated table details summary statistics from each significant shift in intensity.</h4>
+In this example, I'm using changepoint analysis to determine shifts in the intensity of recorded runs, in terms of instantaneous speed. (While runners are usually more concerned about average pace, looking at their speed in terms of miles per hour makes more sense in this example.) Each segment is displayed visually, and the associated table details summary statistics from each significant shift in intensity.</h4>
