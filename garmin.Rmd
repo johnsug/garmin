@@ -120,16 +120,17 @@ Introduction
 
 <h1><i class="fa fa-bar-chart"></i> <b>Digital Portfolio</b></h1>
 
-<h4>I am a runner and a data junkie, which means I love reviewing my personal fitness activities recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch and heart rate monitor. The [Garmin Connect](http://connect.garmin.com) dashboards that sync with my watch are great, however when I can't find the insights I want, I perform my own statistical modeling using my personal running data. This dashboard showcases some of the analytical views I've developed, to better track my own running activity:
+<h4>I am a runner and a data junkie, which means I love reviewing my personal fitness activities recorded by my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/wearabletech/wearables/previous_models_wearables/forerunner-620/prod122785.html) GPS watch and heart rate monitor. The [Garmin Connect](http://connect.garmin.com) dashboards that sync with my watch are great; however when I can't find the insights I want, I perform my own statistical modeling using my personal running data. This dashboard showcases some of the analytical views I've developed, to better track my own running activity:
   
 * <a href=#trend-analysis>Trend Analysis</a> - reviews historical activity metrics (heart rate, pace, V0<sub>2</sub> max, etc)
 * <a href=#pace-benchmarking>Pace Benchmarking</a> - compares recent runs to historical averages and records
 * <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity level
 * <a href=#changepoint-analysis>Changepoint Analysis</a> - drills down on changes in intensity during individual activities
-</h4> 
+
+Forerunner data last updated 9/17/2016.
 
 <br>
-<h5>This digital portfolio was created by John Sugden using the 'flexdashboard' package in R. For more about John, please see my <a href=http://johnsug.github.io><i class="fa fa-rss-square"></i> blog</a> and <a href=https://www.linkedin.com/in/johnsugden><i class="fa fa-linkedin-square"></i> LinkedIn</a> profile.</h5>
+This digital portfolio was created by John Sugden using the 'flexdashboard' package in R. For more about John, please visit my <a href=http://johnsug.github.io><i class="fa fa-rss-square"></i> blog</a> or my <a href=https://www.linkedin.com/in/johnsugden><i class="fa fa-linkedin-square"></i> LinkedIn</a> profile.</h4>
 
 
 
@@ -176,7 +177,7 @@ shinyApp(
         }
       
       ## return UI widget
-      radioButtons("trend_horizon", label="Time horizon:", choices=flex_list, inline=T, selected=12)
+      radioButtons("trend_horizon", label="Time horizon for plots:", choices=flex_list, inline=T, selected=12)
     })
     
     ## filter data based on radio buttons
@@ -272,7 +273,8 @@ shinyApp(
                             label="Time horizon for plot:", 
                             choices=list("2 months"=2, "6 months"=6, "12 months"=12, "All Time"=999), 
                             inline=T, 
-                            selected=12))),
+                            selected=12), 
+                   width=6)),
       
       fluidRow(box(plotlyOutput("mc_plot", height="300px"), width=12))
   ),
