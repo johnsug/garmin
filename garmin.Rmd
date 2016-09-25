@@ -78,6 +78,7 @@ dat$Full_Activity_Name <- paste(dat$Activity_Name, "-", dat$Start)
 f <- fread("detailed_forerunner_log.csv")
 f$Time_Stamp <- paste(f$Date, f$Time)
 f$Time_Stamp <- as.POSIXct(f$Time_Stamp)
+tz(f$Time_Stamp) <- "America/Chicago"
 f$DistanceMeters <- as.numeric(f$DistanceMeters)
 f$HeartRateBpm <- as.numeric(f$HeartRateBpm)
 
