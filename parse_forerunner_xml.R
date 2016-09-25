@@ -3,7 +3,9 @@
 
 ## setup
 library(XML)
-my_path <- "C:/Users/JS033085/Desktop/Temp/Garmin/data/"
+library(lubridate)
+my_path <- "C:/Users/Sugden Family/Documents/Garmin/data/"
+
 import_list <- c(
   # ## cycling activities
   # "cycling_2016-04-01_01", "cycling_2016-04-01_02", "cycling_2016-04-04_01", 
@@ -41,6 +43,9 @@ for(i in 1:length(import_list)){
   parsed$Time <- substr(parsed$Time,12,19)
   parsed$Elapsed_Seconds <- as.numeric(substr(parsed$Time,1,2)) * 60 * 60 + as.numeric(substr(parsed$Time,4,5)) * 60 + as.numeric(substr(parsed$Time,7,8))
   parsed$Elapsed_Seconds <- parsed$Elapsed_Seconds - min(parsed$Elapsed_Seconds) # normalize to zero
+  ## quick hack to get around dashboard issues...
+  parsed$Time <- gsub(" UTC", "", gsub("1970-01-01 ", "", as.character(as_date(hms(parsed$Time) - hms(parsed$Time[1])))))
+  parsed$Time[1] <- "00:00:01"
   
   ## impute heart rate, if needed
   if(is.na(parsed$HeartRateBpm[1])) {parsed$HeartRateBpm[1] <- parsed$HeartRateBpm[!is.na(parsed$HeartRateBpm)][1]}

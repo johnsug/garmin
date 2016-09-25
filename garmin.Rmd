@@ -127,7 +127,7 @@ Introduction
 * <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity level
 * <a href=#changepoint-analysis>Changepoint Analysis</a> - drills down on changes in intensity during individual activities
 
-Forerunner data last updated 9/17/2016.
+Forerunner data last updated 9/24/2016.
 
 <br>
 This digital portfolio was created by John Sugden using the 'flexdashboard' package in R. For more about John, please visit my <a href=http://johnsug.github.io><i class="fa fa-rss-square"></i> blog</a> or my <a href=https://www.linkedin.com/in/johnsugden><i class="fa fa-linkedin-square"></i> LinkedIn</a> profile.</h4>
@@ -250,7 +250,7 @@ shinyApp(
 
 <h4><a href=#changepoint-analysis><i class="fa fa-arrow-left"></i></a> <a href=#pace-benchmarking><i class="fa fa-arrow-right"></i></a><br>
 
-This widget shows how one's fitness metrics are (hopefully) improving over a selected time horizon by way of trend analysis. The user has the ability to select from five metrics: average heart rate, average pace, average speed (MPH), training effect, and V0<sub>2</sub> max. After selecting a metric from the drop-down menus, the user's historical metric activity is plotted (black dots) and connected with a simple gray line. 
+This widget shows how one's fitness metrics are changing over a selected time horizon by way of trend analysis. The user has the ability to select from five metrics: average heart rate, average pace, average speed (MPH), training effect, and V0<sub>2</sub> max. After selecting a metric from the drop-down menus, the user's historical metric activity is plotted (black dots) and connected with a simple gray line. 
 
 Linear regression methods are used to fit a trend line (dark blue line) to the data points. The light blue shading indicates the 95% confidence interval around the fitted trend line. The trend line suggests which direction the user's metrics are trending in the near future.
 
@@ -406,11 +406,11 @@ shinyApp(
       # filter data based on selection from drop-down menu
       cp_dat <- f[Activity==dat$Tagging[dat$Full_Activity_Name==input$changepoint_list]]
       
-      # set first point of time series to 0;00:01, to match up with race elapsed time
-      zero_out <- substr(cp_dat$Time_Stamp[1],12,19)
-      zero_out <- as.numeric(substr(zero_out,1,2))*3600 + as.numeric(substr(zero_out,4,5))*60 + 
-        as.numeric(substr(zero_out,7,8)) - 1
-      cp_dat$Time_Stamp <- cp_dat$Time_Stamp - zero_out
+      # # set first point of time series to 0;00:01, to match up with race elapsed time
+      # zero_out <- substr(cp_dat$Time_Stamp[1],12,19)
+      # zero_out <- as.numeric(substr(zero_out,1,2))*3600 + as.numeric(substr(zero_out,4,5))*60 + 
+      #   as.numeric(substr(zero_out,7,8)) - 1
+      # cp_dat$Time_Stamp <- cp_dat$Time_Stamp - zero_out
       
       # return data frame
       cp_dat
@@ -422,7 +422,7 @@ shinyApp(
       xts(x=ts_dat$MPH, order.by=ts_dat$Time_Stamp)
     })
     
-    ## perform changepoint analysis -- make this reactive later
+    ## perform changepoint analysis
     cp <- reactive({
       
       ## find changepoints
@@ -469,7 +469,6 @@ shinyApp(
       m5 <- mean(ts_dat$MPH[cpts[5]:(cpts[6]-1)])
       
       ## return mean values
-      ################# blowing up here, because cp_data and means don't match, due to last point here
       c(rep(m1, cpts[2]), 
         rep(m2, cpts[3]-cpts[2]), 
         rep(m3, cpts[4]-cpts[3]), 
