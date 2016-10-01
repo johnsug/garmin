@@ -63,7 +63,7 @@ raw_pace <- function(pace){
 
 ## load datasets
 # daily log (agregated)
-d <- fread("forerunner_log.csv")
+d <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/forerunner_log.csv")
 d <- d[!is.na(Distance)]
 names(d) <- gsub(" ", "_", names(d))
 names(d)[names(d)=="Avg_Speed(Avg_Pace)"] <- "Pace"
@@ -75,7 +75,7 @@ dat <- DT(d)[Activity_Type=="Running"][Max_HR!="--"]
 dat$Full_Activity_Name <- paste(dat$Activity_Name, "-", dat$Start)
 
 # detailed logs
-f <- fread("detailed_forerunner_log.csv")
+f <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/detailed_forerunner_log.csv")
 f$Time_Stamp <- paste(f$Date, f$Time)
 f$Time_Stamp <- as.POSIXct(f$Time_Stamp)
 tz(f$Time_Stamp) <- "America/Chicago"
@@ -83,7 +83,7 @@ f$DistanceMeters <- as.numeric(f$DistanceMeters)
 f$HeartRateBpm <- as.numeric(f$HeartRateBpm)
 
 # personal records
-pr <- DF(fread("personal_records.csv"))
+pr <- DF(fread("https://raw.githubusercontent.com/johnsug/garmin/master/personal_records.csv"))
 is_hours <- substr(pr$Time,2,2)==":"
 pr$Time <- strsplit(pr$Time, ":")
 for(i in 1:nrow(pr)){
@@ -127,8 +127,6 @@ Introduction
 * <a href=#pace-benchmarking>Pace Benchmarking</a> - compares recent runs to historical averages and records
 * <a href=#calendar-heatmap>Calendar Heatmap</a> - quickly illustrates annual activity level
 * <a href=#changepoint-analysis>Changepoint Analysis</a> - drills down on changes in intensity during individual activities
-
-Forerunner data last updated 9/24/2016.
 
 <br>
 This digital portfolio was created by John Sugden using the 'flexdashboard' package in R. For more about John, please visit my <a href=http://johnsug.github.io><i class="fa fa-rss-square"></i> blog</a> or my <a href=https://www.linkedin.com/in/johnsugden><i class="fa fa-linkedin-square"></i> LinkedIn</a> profile.</h4>
