@@ -1,8 +1,3 @@
 Data analysis using R and data from my [Garmin Forerunner 620](https://buy.garmin.com/en-US/US/gifts/forerunner-620/prod122785.html):
 
-* Change point analysis
-* Efficient frontier analysis
-* Predictive model
-* Daily activity calendar heatmaps
-* Pace trends and forecasts
-* Etc
+Dashboard hosted here: https://johnsug.shinyapps.io/garmin/
