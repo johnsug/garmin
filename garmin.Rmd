@@ -390,7 +390,8 @@ shinyApp(
   ## user interface #####
   ui = 
     fillPage(
-      selectInput("changepoint_list", "Choose Activity", choices=dat$Full_Activity_Name, width=400),
+      selectInput("changepoint_list", "Choose Activity", 
+                  choices=dat$Full_Activity_Name[dat$Tagging!="" & !is.na(dat$Tagging)], width=400),
       fluidRow(
         box(dygraphOutput("changepoint_plot", height="300px"), width=8),
         box(formattableOutput("changepoint_table"), width=4))
