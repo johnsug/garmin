@@ -10,8 +10,6 @@ runtime: shiny
 
 ```{r fix list}
 # optimize for mobile viewing ???
-# disable legend clickability on benchmark plot ?
-# switch radios with dropboxes (to enable more months) ?
 ```
 
 ```{r setup}
@@ -329,19 +327,19 @@ shinyApp(
         config(displayModeBar=F) %>% 
         layout(xaxis=list(title="Distance (Miles)", fixedrange=TRUE), 
                yaxis=list(title="Run Time (Minutes)", fixedrange=TRUE)) %>%
-        
-      ## plot average-pace line
-      add_trace(x=avg_pace()$x, y=avg_pace()$y, name="Average Pace", mode="lines", opacity=.3, 
-                line=list(width=5)) %>%
       
-      ## plot best-pace line
-      add_trace(x=best_pace$x, y=best_pace$y, name="Best Pace", mode="lines", opacity=.3, 
-                line=list(width=5))
-      
-      ## add gold star for most recent activity?
-      add_trace(x=recent$Distance, y=recent$Mins, name="Most Recent", mode="markers", opacity=.8, 
-                marker=list(symbol="x", size=20, color="red"))
+        ## most recent activity
+        add_trace(x=recent$Distance, y=recent$Mins, name="Most Recent", mode="markers", opacity=.5, 
+                  marker=list(symbol="x", size=16, color="red"))  
+            
+        ## plot average-pace line
+        add_trace(x=avg_pace()$x, y=avg_pace()$y, name="Average Pace", mode="lines", opacity=.3, 
+                  line=list(width=5, color="cyan")) %>%
         
+        ## plot best-pace line
+        add_trace(x=best_pace$x, y=best_pace$y, name="Best Pace", mode="lines", opacity=.3, 
+                  line=list(width=5, color="orange"))
+          
       })
     }
 )
@@ -350,7 +348,7 @@ shinyApp(
 
 <h4><a href=#trend-analysis><i class="fa fa-arrow-left"></i></a> <a href=#calendar-heatmap><i class="fa fa-arrow-right"></i></a><br>
 
-In this plot, historical activities (blue dots) are compared to benchmarks of both historical best paces (green line) and average paces (gold line) from the selected time horizon.</h4>
+In this plot, historical activities (blue dots) are compared to benchmarks of both historical best paces (gold line) and average paces (light blue line) from the selected time horizon.</h4>
 
 
 
