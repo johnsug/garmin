@@ -295,6 +295,9 @@ shinyApp(
       eff_dat2
     })
     
+    ## most recent activity
+    recent <- head(dat, 1)
+    
     ## build "best pace" frontier using personal records file
     best_pace <- DT(pr)[, .(x=Distance, y=Time)]
     slope <- lm(tail(best_pace$y,2)~tail(best_pace$x,2))$coefficients[2]
@@ -334,6 +337,10 @@ shinyApp(
       ## plot best-pace line
       add_trace(x=best_pace$x, y=best_pace$y, name="Best Pace", mode="lines", opacity=.3, 
                 line=list(width=5))
+      
+      ## add gold star for most recent activity?
+      add_trace(x=recent$Distance, y=recent$Mins, name="Most Recent", mode="markers", opacity=.8, 
+                marker=list(symbol="x", size=20, color="red"))
         
       })
     }
@@ -390,8 +397,9 @@ shinyApp(
   ## user interface #####
   ui = 
     fillPage(
-      selectInput("changepoint_list", "Choose Activity", 
-                  choices=dat$Full_Activity_Name[dat$Tagging!="" & !is.na(dat$Tagging)], width=400),
+      selectInput("changepoint_list", "Choose Activity", width=400, 
+                  choices=dat[Tagging!="" & Tagging!="--" & !is.na(Tagging), Full_Activity_Name]), 
+                    
       fluidRow(
         box(dygraphOutput("changepoint_plot", height="300px"), width=8),
         box(formattableOutput("changepoint_table"), width=4))
