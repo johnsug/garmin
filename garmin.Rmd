@@ -24,6 +24,7 @@ library(googleVis)        ## data viz (calendar heatmap)
 library(changepoint)      ## changepoint analysis
 library(data.table)       ## data munging
 library(plyr)             ## data munging
+library(scales)           ## formatting
 library(formattable)      ## formatting
 library(lubridate)        ## manipulating dates data
 library(xts)              ## extended time series functionality
@@ -183,24 +184,25 @@ shinyApp(
       if(input$trend_horizon==2) {pd <- pd[Date > dates_2_months]}
       if(input$trend_horizon==6) {pd <- pd[Date > dates_6_months]}
       if(input$trend_horizon==12) {pd <- pd[Date > dates_12_months]}
-      pd$Pace <- NULL
       pd <- melt(pd, id.vars=c("Date", "Distance", "Time"), variable.name="Plot", value.name="Value")
-      pd
+      pd[, Plot:=as.character(Plot)]
+      pd[, Value:=as.numeric(Value)]
+      pd <- pd[!is.na(Value)]
     })
     
     ## period trend change table
     change_table <- reactive({
       pd <- plot_dat()
-      metrics <- DT(pd)[!is.na(Value), .(Start=head(Value,1), End=tail(Value,1)), by=Plot]
-      metrics$Change <- metrics$Start - metrics$End
-      metrics$Percent_Change <- round(metrics$Start / metrics$End - 1,3)
-      metrics$Periodic_Change <- scales::percent(metrics$Percent_Change)
+      metrics <- DT(pd)[!is.na(Value) & Value!="--", .(Start=head(Value,1), End=tail(Value,1)), by=Plot]
+      metrics[, Change:=Start-End]
+      metrics[, Percent_Change:=round(Start/End-1,3)]
+      metrics[, Periodic_Change:=percent(Percent_Change)]
       metrics[, .(Plot=Plot, Periodic_Change=Periodic_Change)]
     })
     
     ## plot #1: build ggplot then wrap with ggplotly
     gg_01 <- reactive({
-      pd <- subset(plot_dat(), Plot==input$trend_box_1)
+      pd <- plot_dat()[Plot==input$trend_box_1]
       g1 <- ggplot(pd, aes(x=Date, y=Value)) + 
               geom_line(col="gray") + 
               geom_point(size=2) + 
@@ -213,7 +215,7 @@ shinyApp(
     
     ## plot #2: build ggplot then wrap with ggplotly
     gg_02 <- reactive({
-      pd <- subset(plot_dat(), Plot==input$trend_box_2)
+      pd <- plot_dat()[Plot==input$trend_box_2]
       g2 <- ggplot(pd, aes(x=Date, y=Value)) + 
               geom_line(col="gray") + 
               geom_point(size=2) + 
