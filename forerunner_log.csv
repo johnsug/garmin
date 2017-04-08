@@ -1,5 +1,5 @@
 Activity Name,Activity Type,Start,Tagging,Time,Distance,Avg Speed(Avg Pace),Elevation Gain,Max Speed(Best Pace),Avg HR,Max HR,V02 Max,Training Effect
-Rock the Parkway 2017,Running,"Sat, Apr 8, 2017 7:00 AM",--,1:45:00,0.00,10:00,--,--,--,--,--,--
+Rock the Parkway 2017,Running,"Sat, Apr 8, 2017 7:31 AM",--,1:49:11,13.10,8:20,--,--,--,--,--,--
 Treadmill Running,Running,"Thu, Apr 6, 2017 9:39 PM",--,26:40,3.11,8:19,--,--,--,--,--,--
 Treadmill Running,Running,"Wed, Apr 5, 2017 8:32 PM",--,55:14,6.09,9:04,--,--,--,--,--,--
 Treadmill Running,Running,"Tue, Apr 4, 2017 9:39 PM",--,29:59,3.00,10:00,--,--,--,--,--,--
@@ -59,6 +59,10 @@ Lees Summit Running,Running,"Sat, Dec 31, 2016 6:23 AM",--,1:38:52,9.53,10:22,42
 Treadmill Running,Running,"Thu, Dec 29, 2016 11:34 PM",--,23:52,3.00,7:57,--,--,--,--,--,--
 Lees Summit Running,Running,"Wed, Dec 28, 2016 5:26 PM",--,50:01,5.17,9:41,200,5:59,164,177,45,5.0
 Treadmill Running,Running,"Tue, Dec 27, 2016 9:05 PM",--,24:13,3.00,8:04,--,7:28,--,--,--,--
+Treadmill Running,Running,"Tue, Dec 24, 2016 9:00 PM",--,--,0,--,--,--,--,--,--,--
+Treadmill Running,Running,"Tue, Dec 22, 2016 9:00 PM",--,--,0,--,--,--,--,--,--,--
+Treadmill Running,Running,"Tue, Dec 21, 2016 9:00 PM",--,--,0,--,--,--,--,--,--,--
+Treadmill Running,Running,"Tue, Dec 20, 2016 9:00 PM",--,--,0,--,--,--,--,--,--,--
 Treadmill Running,Running,"Wed, Dec 14, 2016 9:36 PM",--,25:52:00,3.00,8:37,--,--,--,--,--,--
 Treadmill Running,Running,"Thu, Dec 8, 2016 9:44 PM",--,25:38:00,3.00,8:33,--,--,--,--,--,--
 Treadmill Running,Running,"Tue, Dec 6, 2016 9:34 PM",--,20:36,2.5,8:15,--,--,--,--,--,--
