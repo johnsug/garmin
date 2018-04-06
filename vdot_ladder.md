@@ -1,11 +1,13 @@
 Table thanks to https://www.reddit.com/r/artc/comments/7s5jcs/race_times_ranked_by_vdot_aka_milestones/
 
-| VODT | Mins | Distance | Pace | Date | Actual Time |
-|------|------|----------|------|------|-------------|
-| 40.4 | 110  | HM  | 8:24 | 111:18 | 3/31/2018* |
+_(an astrisk indicates within one minute of goal time, without actually being race-like conditions, so I feel they still count...)_
+
+| VODT | Mins | Distance | Pace | Actual Time | Date |
+|------|------|----------|------|-------------|------|
+| 40.4 | 110  | HM  | 8:24 | 111:18* | 3/31/2018 |
 | 42   | 48   | 10K | 7:45 | 46:07 | 3/19/2018 |
 | 42.3 | 23   | 5K  | 7:25 | 22:25 | 2/13/2018 |
-| 42.6 | 105  | HM  | 8:01 |  | |
+| 42.6 | 105  | HM  | 8:01 | 106:10* | 4/06/2018 |
 | 44.1 | 46   | 10K | 7:25 |  | |
 | 44.5 | 22   | 5K  | 7:06 |  | |
 | 45.1 | 100  | HM  | 7:38 |  | |
