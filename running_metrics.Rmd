@@ -1,0 +1,144 @@
+---
+title: "Running Metrics"
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    source_code: embed
+---
+  
+```{r main calculations}
+# import libraries
+library(curl)           # reading in websites
+library(plyr)           # joining tables
+library(shiny)          # shiny framework
+library(ggplot2)        # line chart viz
+library(googleVis)      # calendar heatmap
+library(lubridate)      # munging dates
+library(data.table)     # data munging
+library(flexdashboard)  # dashboard framework
+library(rwunderground)  # weather data
+
+# race/training parameters
+start_date <- as.Date("2018-07-23") ## first day of marathon training schedule
+end_date   <- as.Date("2018-10-19") ## date of KC Marathon
+today_date <- today(tz="US/Central")
+
+# read data from garmin watch
+d <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/garmin_log.csv")
+names(d) <- gsub(" ", "_", names(d))
+d <- d[Activity_Type=="running"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Distance, Time, Calories, Avg_HR, Avg_Run_Cadence, 
+                                     Avg_Pace, Elev_Gain, Elev_Loss, Avg_Stride_Length, Aerobic_TE)]
+# pace plot data
+p <- d[Date>=start_date, .(Date, Distance, Time, Avg_Pace)]
+p$Pace <- period_to_seconds(ms(p$Avg_Pace))/60
+
+# daily miles aggregation
+d <- d[order(Date), .(Distance=sum(Distance)), by=Date]
+
+# read data from higdon schedule and merge with running data
+schedule <- fread("https://raw.githubusercontent.com/johnsug/marathon_training/master/modified_22.csv", colClasses=c("int", rep("chr",7)))
+schedule <- melt(schedule, id.vars="Week", variable.name="Day", value.name="Miles")
+schedule$Miles[schedule$Miles %in% c("Cross", "Rest","30 min")] <- "0"
+schedule$Miles <- as.numeric(schedule$Miles)
+schedule$Week <- as.numeric(schedule$Week)
+schedule$Day <- factor(schedule$Day, levels=c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
+schedule <- schedule[order(Week, Day)]
+schedule$Date <- as.Date(start_date:end_date, origin="1970-01-01")
+schedule <- d[schedule, on="Date"]
+schedule$Distance[is.na(schedule$Distance)] <- 0
+schedule$Effort[schedule$Day %in% c("Sun", "Fri")] <- "Rest"
+schedule$Effort[schedule$Day=="Mon"] <- "Marathon Pace"
+schedule$Effort[schedule$Day=="Tue"] <- "Tempo Run"
+schedule$Effort[schedule$Day=="Wed"] <- "Hills"
+schedule$Effort[schedule$Day=="Thu"] <- "Threshold/Intervals"
+schedule$Effort[schedule$Day=="Sat"] <- "1/2 Long/Marathon"
+
+# weather data
+upcoming_forecast <- data.table(forecast10day(location=set_location(zip_code="64063"), key=set_api_key("9902e338ba5ab887"), message=F))
+upcoming_forecast <- upcoming_forecast[, .(Date=as.Date(substr(date,1,10)), Low=temp_low, High=temp_high)]
+
+# # next ten days
+next_ten <- head(schedule[Date>=today_date], 10)
+next_ten$Miles[is.na(next_ten$Miles)] <- 0
+next_ten <- plyr::join(next_ten, upcoming_forecast)
+next_ten <- next_ten[, .(Date=paste(Day, gsub("-", "/", gsub("2018-", "", Date))), Scheduled=Miles, Effort, Low, High)] ## Actual=Distance, 
+
+# weekly mileage
+weekly_mileage <- schedule[Date <= today_date, .(Miles=round(sum(Distance),1)), by=Week]
+weekly_mileage <- head(weekly_mileage, -1)
+
+## shiny outputs ##################################################################################
+
+## pace plot
+output$pace_plot <- renderPlot({
+  ggplot(p, aes(x=Date, y=Pace)) + 
+    geom_point(col="dodgerblue", size=1.5) + 
+    geom_smooth(color=6, fill=6, alpha=.15, size=1, method="loess", span=2) + 
+    labs(y="Pace (Minutes/Mile)") + 
+    ylim(6.5, 11) ## ignore AZ mountaineering expenditure
+})
+
+## weekly mileage plot
+output$weekly_mileage_plot <- renderPlot({
+  ggplot(weekly_mileage, aes(x=Week, y=Miles, group=1)) +
+    geom_line(size=2, col="dodgerblue") +
+    geom_point(size=5, col="dodgerblue") +
+    geom_point(size=2, col="white") +
+    labs(x="Week", y="Miles") +
+    ylim(0, max(weekly_mileage$Miles)+2)
+})
+
+## calendar heatmap
+output$heatmap <- renderGvis({
+  gvisCalendar(data=subset(d, Date>"2016-12-31"), 
+               datevar="Date", 
+               numvar="Distance", 
+               chartid="Calendar", 
+               options=list(width=1000, height=500, #title="Running Activity Heatmap", 
+                            colorAxis="{minValue: 0, colors: ['#FFF285', '#FF7956']}"))
+})
+
+## next 10 days table
+output$next_week_dt <- renderTable({
+  next_ten
+  }, 
+  digits=0, 
+  striped=T, 
+  hover=T
+)
+
+```
+
+<!-- Row {data-height=250}             -->
+<!-- ---------------------------------------
+<!--                                   --> 
+<!-- ### Next Ten Days                 -->
+<!-- ```{r schedule}                   -->
+<!-- tableOutput("next_week_dt")       -->
+<!-- ```                               -->
+<!--                                   -->
+<!-- ### Pace Plot                     -->
+<!-- ```{r pace plot}                  -->
+<!-- plotOutput("pace_plot")           -->
+<!-- ```                               -->
+<!--                                   -->
+<!-- ### Weekly Mileage                -->
+<!-- ```{r weekly mileage}             -->
+<!-- plotOutput("weekly_mileage_plot") -->
+<!-- ```                               -->
+
+Row {data-height=300} <!-- 250 -->
+---------------------------------------
+
+### 2017-2018 Running Activity
+```{r heatmap}
+htmlOutput("heatmap")
+```
+
+Row {data-height=50}
+---------------------------------------
+
+### Sources
+
+Weather data from wunderground.com (accessed via 'rwunderground' package on CRAN)
