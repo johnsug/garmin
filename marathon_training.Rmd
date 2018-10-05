@@ -1,185 +1,92 @@
 ---
-title: "2018 Marathon Training"
- runtime: shiny
- output:
-   flexdashboard::flex_dashboard:
-     orientation: rows
-     source_code: embed
+title: "Running Metrics"
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    source_code: embed
 ---
-   
+  
 ```{r main calculations}
 # import libraries
-library(TTR)            # moving averaging
 library(curl)           # reading in websites
 library(plyr)           # joining tables
 library(shiny)          # shiny framework
-library(ggalt)          # advanced ggplot
 library(ggplot2)        # line chart viz
 library(googleVis)      # calendar heatmap
 library(lubridate)      # munging dates
 library(data.table)     # data munging
 library(flexdashboard)  # dashboard framework
-library(rwunderground)  # weather data
-
-## race time prediction ###########################################################################
-##   see https://projects.fivethirtyeight.com/marathon-calculator/
-##   and https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5000509/
-##   and especially https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5000509/bin/13102_2016_52_MOESM1_ESM.docx
-## 
-## equations in the vickers/vertosick paper parameterized distance in meters and times in seconds;
-##  (except for the typical_mileage parameter, which was never meant to be converted to meters)
-## these formulas were standardized to require distance in miles and time in minutes
-## the model returns marathon time in minutes, with an optimal parameter to convert prediction into H:MM:SS
-
-vickers_vertosick <- function(recent_time, recent_distance, typical_mileage=0, mins_to_HMS=T){
-  vr <- 42195/((recent_time*60)*((26.21875/recent_distance)^1.07))   # convert meters to miles: 42195 * 0.000621371 = 26.21875
-  v1 <- 0.16018617 + 0.83076202*vr + 0.064238260*typical_mileage/10
-  t1 <- (42195/60)/v1
-  
-  convert_mins_to_HMS <- function(mins){
-    raw_hrs <- floor(mins/60)
-    raw_min <- floor(mins - raw_hrs * 60)
-    spacer_01 <- ""
-    if(raw_min < 10) spacer_01 <- "0"
-    raw_sec <- round((mins - raw_hrs * 60 - raw_min)*60)
-    spacer_02 <- ""
-    if(raw_sec < 10) spacer_02 <- "0"
-    paste0(raw_hrs, ":", spacer_01, raw_min, ":", spacer_02, raw_sec)
-  }
-  
-  if(mins_to_HMS==T) return(convert_mins_to_HMS(t1))
-  else return(t1)
-}
-
-vv_to_pace <- function(predicted){
-  parsed_text <- strsplit(predicted, ":")
-  raw_mins <- as.numeric(parsed_text[[1]][1]) * 60 + as.numeric(parsed_text[[1]][2]) + as.numeric(parsed_text[[1]][3]) / 60
-  raw_pace <- raw_mins / 26.2
-  
-  pace_mins <- floor(raw_pace)
-  pace_secs <- round((raw_pace - pace_mins) * 60)
-  pace <- paste0(pace_mins, ":", pace_secs)
-  return(pace)
-}
+# library(rwunderground)  # weather data
 
 # race/training parameters
-start_date <- as.Date("2017-11-19") ## first day of marathon training schedule
-end_date   <- as.Date("2018-04-21") ## date of Garmin Marathon
+start_date <- as.Date("2018-07-23") ## first day of marathon training schedule
+end_date   <- as.Date("2018-10-19") ## date of KC Marathon
 today_date <- today(tz="US/Central")
 
 # read data from garmin watch
 d <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/garmin_log.csv")
 names(d) <- gsub(" ", "_", names(d))
-d <- d[Activity_Type=="running"][, .(Date=as.Date(Date, format="%m/%d/%Y"), Distance, Time, Calories, Avg_HR, Avg_Cadence, 
- 
-# parse out "best" race for race time prediction
-best <- d[substr(Date,1,4)==2017 & Distance>13]
-best$H <- tstrsplit(best$Time, ":")[1]
-best$M <- tstrsplit(best$Time, ":")[2]
-best$S <- tstrsplit(best$Time, ":")[3]
-best$S[is.na(best$S)] <- 0
-best$Time <- as.numeric(best$H)*60 + as.numeric(best$M) + as.numeric(best$S)/60
-best$Pace <- best$Time / as.numeric(best$Distance)
-best <- head(best[order(Pace)],1)
+d <- d[Activity_Type=="running"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Distance, Time, Calories, Avg_HR, Avg_Run_Cadence, 
+                                     Avg_Pace, Elev_Gain, Elev_Loss, Avg_Stride_Length, Aerobic_TE)]
+# # pace plot data
+# p <- d[Date>=start_date, .(Date, Distance, Time, Avg_Pace)]
+# p$Pace <- period_to_seconds(ms(p$Avg_Pace))/60
 
-# daily aggregation
 # daily miles aggregation
 d <- d[order(Date), .(Distance=sum(Distance)), by=Date]
- 
-schedule <- fread("https://raw.githubusercontent.com/johnsug/marathon_training/master/modified_22.csv", colClasses=c("int", rep("chr",7)))
- schedule <- melt(schedule, id.vars="Week", variable.name="Day", value.name="Miles")
- schedule$Miles[schedule$Miles %in% c("Cross", "Rest","30 min")] <- "0"
- schedule$Miles <- as.numeric(schedule$Miles)
- schedule$Week <- as.numeric(schedule$Week)
- schedule$Day <- factor(schedule$Day, levels=c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
- schedule <- schedule[order(Week, Day)]
- schedule$Date <- as.Date(start_date:end_date, origin="1970-01-01")
- schedule <- d[schedule, on="Date"]
- schedule$Distance[is.na(schedule$Distance)] <- 0 
 
-# weather data
-upcoming_forecast <- data.table(forecast10day(location=set_location(zip_code="64063"), key=set_api_key("9902e338ba5ab887"), message=F))
-upcoming_forecast <- upcoming_forecast[, .(Date=as.Date(substr(date,1,10)), Low=temp_low, High=temp_high)]
- 
-# current week
-current_week <- schedule[Week==schedule[Date==today_date, Week]]
-current_week <- upcoming_forecast[current_week, on="Date"]
-current_week$Distance[current_week$Date < today_date & is.na(current_week$Distance)] <- 0
-current_week <- current_week[, .(Day, Scheduled=Miles, Actual=Distance, Low, High)]
+# # read data from higdon schedule and merge with running data
+# schedule <- fread("https://raw.githubusercontent.com/johnsug/marathon_training/master/modified_22.csv", colClasses=c("int", rep("chr",7)))
+# schedule <- melt(schedule, id.vars="Week", variable.name="Day", value.name="Miles")
+# schedule$Miles[schedule$Miles %in% c("Cross", "Rest","30 min")] <- "0"
+# schedule$Miles <- as.numeric(schedule$Miles)
+# schedule$Week <- as.numeric(schedule$Week)
+# schedule$Day <- factor(schedule$Day, levels=c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
+# schedule <- schedule[order(Week, Day)]
+# schedule$Date <- as.Date(start_date:end_date, origin="1970-01-01")
+# schedule <- d[schedule, on="Date"]
+# schedule$Distance[is.na(schedule$Distance)] <- 0
+# schedule$Effort[schedule$Day %in% c("Sun", "Fri")] <- "Rest"
+# schedule$Effort[schedule$Day=="Mon"] <- "Marathon Pace"
+# schedule$Effort[schedule$Day=="Tue"] <- "Tempo Run"
+# schedule$Effort[schedule$Day=="Wed"] <- "Hills"
+# schedule$Effort[schedule$Day=="Thu"] <- "Threshold/Intervals"
+# schedule$Effort[schedule$Day=="Sat"] <- "1/2 Long/Marathon"
+# 
+# # weather data
+# upcoming_forecast <- data.table(forecast10day(location=set_location(zip_code="64063"), key=set_api_key("9902e338ba5ab887"), message=F))
+# upcoming_forecast <- upcoming_forecast[, .(Date=as.Date(substr(date,1,10)), Low=temp_low, High=temp_high)]
+# 
+# # next ten days
+# next_ten <- head(schedule[Date>=today_date], 10)
+# next_ten$Miles[is.na(next_ten$Miles)] <- 0
+# next_ten <- plyr::join(next_ten, upcoming_forecast)
+# next_ten <- next_ten[, .(Date=paste(Day, gsub("-", "/", gsub("2018-", "", Date))), Scheduled=Miles, Effort, Low, High)] ## Actual=Distance, 
+# 
+# # weekly mileage
+# weekly_mileage <- schedule[Date <= today_date, .(Miles=round(sum(Distance),1)), by=Week]
+# weekly_mileage <- head(weekly_mileage, -1)
 
-# upcoming week
-next_week <- schedule[Week==schedule[Date==today_date, Week+1]]
-next_week <- upcoming_forecast[next_week, on="Date"]
-next_week <- next_week[, .(Day, Scheduled=Miles, Actual=Distance, Low, High)]
- 
-# weekly mileage
-weekly_mileage <- subset(schedule, Date<=today_date)
-weekly_mileage <- data.table(weekly_mileage)
-weekly_mileage <- weekly_mileage[, .(Weekly=round(sum(Distance),1)), by=Week]
-weekly_mileage <- schedule[Date <= today_date, .(Miles=round(sum(Distance),1)), by=Week]
-weekly_mileage <- head(weekly_mileage, -1)
-n <- min(c(6, weekly_mileage[as.numeric(Week) <= as.numeric(schedule[Date==today_date, Week]), .N]))
-
-# parameters for Vickers Vertosick prediction
-best_recent_time <- best[, Time]
-best_recent_distance <- best[, Distance]
-weekly_sma <- 0 ## error handling
-if(n < 1) {weekly_sma <- round(SMA(weekly_mileage[as.numeric(Week) <= as.numeric(schedule[Date==today_date, Week]), Weekly], n),1)}
-weekly_sma <- max(weekly_sma[complete.cases(weekly_sma)])
-predicted_race_time <- vickers_vertosick(best_recent_time, best_recent_distance, weekly_sma)
-
-# wrangle data for info boxes
-days_run <- schedule[Date <= today_date][Distance>0, .N]
-days_missed <- schedule[Date < today_date][Miles>0, .N] - schedule[Date < today_date][Distance>0, .N]
-miles_run <- schedule[Date <= today_date][Distance>0, round(sum(Distance),1)]
-miles_missed <- schedule[Date < today_date][Miles>0, sum(Miles)] - 
-  schedule[Date < today_date][Distance>0, round(sum(Distance),1)]
-if(miles_missed<0) {miles_missed <- 0}
- 
 ## shiny outputs ##################################################################################
- 
-## current week data table 
-output$current_week_dt <- renderTable({
-  current_week
-  }, 
-  digits=0, 
-  striped=T, 
-  hover=T
-)
 
-## upcoming week data table
-output$next_week_dt <- renderTable({
-  next_week
-  }, 
-  digits=0, 
-  striped=T, 
-  hover=T
-)
-
-## schedule table
-output$training_schedule_dt <- renderTable({
-  dcast.data.table(schedule, Week~Day, value.var="Miles")
-  }, 
-  digits=0, 
-  striped=T, 
-  hover=T
-)
- 
-## weekly mileage plot
-output$weekly_mileage_plot <- renderPlot({
-  ggplot(weekly_mileage, aes(x=Week, y=Weekly, group=1)) + 
-    geom_line(size=2, col="dodgerblue") + 
-    geom_point(size=5, col="dodgerblue") + 
-    geom_point(size=2, col="white") + 
-    labs(x="Week", y="Miles") + 
-    # scale_x_discrete() + 
-    ylim(0, max(weekly_mileage$Weekly)+2)
-})
- 
-# ## ggalt weekly mileage
-# output$ggalt_weekly_mileage <- renderPlot({
-#   ggplot(weekly_mileage, aes(x=Week, y=Weekly, group=1)) + 
-#     geom_lollipop() + theme_ipsum(grid="X")
+# ## pace plot
+# output$pace_plot <- renderPlot({
+#   ggplot(p, aes(x=Date, y=Pace)) + 
+#     geom_point(col="dodgerblue", size=1.5) + 
+#     geom_smooth(color=6, fill=6, alpha=.15, size=1, method="loess", span=2) + 
+#     labs(y="Pace (Minutes/Mile)") + 
+#     ylim(6.5, 11) ## ignore AZ mountaineering expenditure
+# })
+# 
+# ## weekly mileage plot
+# output$weekly_mileage_plot <- renderPlot({
+#   ggplot(weekly_mileage, aes(x=Week, y=Miles, group=1)) +
+#     geom_line(size=2, col="dodgerblue") +
+#     geom_point(size=5, col="dodgerblue") +
+#     geom_point(size=2, col="white") +
+#     labs(x="Week", y="Miles") +
+#     ylim(0, max(weekly_mileage$Miles)+2)
 # })
 
 ## calendar heatmap
@@ -188,108 +95,50 @@ output$heatmap <- renderGvis({
                datevar="Date", 
                numvar="Distance", 
                chartid="Calendar", 
-               options=list(width=1000, height=500, title="Running Activity Heatmap (in Miles)", 
-                            colorAxis="{minValue: 0, colors: ['yellow', 'green']}"))
-})
- 
-## value boxes 
-output$avg_miles_per_week <- renderValueBox({ 
-  valueBox(value=weekly_sma, icon="fa-bar-chart", color="primary")
+               options=list(width=1000, height=500, #title="Running Activity Heatmap", 
+                            colorAxis="{minValue: 0, colors: ['#FFF285', '#FF7956']}"))
 })
 
-output$predicted_race_time <- renderValueBox({ 
-  valueBox(value=paste(predicted_race_time, "/", vv_to_pace(predicted_race_time)), icon="fa-flash", color="primary")
-})
+# ## next 10 days table
+# output$next_week_dt <- renderTable({
+#   next_ten
+#   }, 
+#   digits=0, 
+#   striped=T, 
+#   hover=T
+# )
 
-output$sources <- renderValueBox({
-  valueBox(value="Wunderground", icon="fa-pencil", color="primary")
-})
-
-output$training_days_box <- renderValueBox({ 
-  valueBox(value=paste(days_run, "/", days_missed), icon="fa-bed", color="primary")
-})
-
-output$training_miles_box <- renderValueBox({ 
-  valueBox(value=paste(miles_run, "/", miles_missed), icon="fa-road", color="primary")
-})
-
-output$training_remaining_box <- renderValueBox({ 
-  valueBox(value=paste(as.numeric(end_date-today_date), "/", round(as.numeric(end_date-today_date)/7,2)), 
-           icon="fa-hourglass-end", color="primary") 
-})
 ```
- 
-Weekly Schedule
-=======================================
-  
-Row {data-height=250}
+
+<!-- Row {data-height=250}             -->
+<!-- ---------------------------------------
+<!--                                   --> 
+<!-- ### Next Ten Days                 -->
+<!-- ```{r schedule}                   -->
+<!-- tableOutput("next_week_dt")       -->
+<!-- ```                               -->
+<!--                                   -->
+<!-- ### Pace Plot                     -->
+<!-- ```{r pace plot}                  -->
+<!-- plotOutput("pace_plot")           -->
+<!-- ```                               -->
+<!--                                   -->
+<!-- ### Weekly Mileage                -->
+<!-- ```{r weekly mileage}             -->
+<!-- plotOutput("weekly_mileage_plot") -->
+<!-- ```                               -->
+
+Row {data-height=300} <!-- 250 -->
 ---------------------------------------
-  
-### Current Week
-  
-```{r current week}
-tableOutput("current_week_dt")
-```
 
-### Next Week
-
-```{r next week}
-tableOutput("next_week_dt")
- ```
- 
-### Average Weekly Mileage
-
-```{r}
-plotOutput("weekly_mileage_plot")
-```
-
-Row {data-height=70}
----------------------------------------
-  
-### Days run / missed
-```{r training days}
-valueBoxOutput("training_days_box")
-```
- 
-### Miles run / missed
-```{r training miles}
-valueBoxOutput("training_miles_box")
-```
-
-### Days / weeks until race day
-```{r remaining days}
-valueBoxOutput("training_remaining_box")
-```
- 
-Row {data-height=70}
----------------------------------------
-  
-### Average miles / week (6-week moving average)
-```{r average weekly miles}
-valueBoxOutput("avg_miles_per_week")
-```
-
-### Predicted race time / pace
-```{r predicted race time}
-valueBoxOutput("predicted_race_time")
-```
-
-### Source of weather data
-```{r sources}
-valueBoxOutput("sources")
-```
- 
-Training Schedule
-=======================================
-  
-```{r training_viz}
-#plotOutput("viz")
-tableOutput("training_schedule_dt")
-```
- 
-2017-2018 Activity
-=======================================
-  
+### 2017-2018 Running Activity
 ```{r heatmap}
 htmlOutput("heatmap")
 ```
+
+<!-- Row {data-height=50} -->
+<!-- --------------------------------------- -->
+
+<!-- ### Sources -->
+
+<!-- Weather data from wunderground.com (accessed via 'rwunderground' package on CRAN) -->
