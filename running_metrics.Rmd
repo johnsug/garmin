@@ -30,7 +30,9 @@ run <- run[Date>"2016-12-31"]
 ## cardio
 cardio <- dat[Activity_Type=="indoor_cardio"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Time, Calories)]
 cardio <- cardio[Date>"2016-12-31"]
-cardio <- cardio[, Minutes:=as.numeric(substr(Time,1,2))+as.numeric(substr(Time,4,5))/60]
+cardio <- cardio[, Minutes:=as.numeric(substr(Time,1,2))*60 +
+                   as.numeric(substr(Time,4,5)) + 
+                   as.numeric(substr(Time,7,8))/60]
 cardio <- cardio[, .(Minutes=round(sum(Minutes)), Calories=sum(as.numeric(Calories))), by=Date]
 
 # # pace plot data
