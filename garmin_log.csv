@@ -1,4 +1,5 @@
 "Activity Type","Date","Favorite","Title","Distance","Calories","Time","Avg HR","Max HR","Aerobic TE","Avg Run Cadence","Max Run Cadence","Avg Pace","Best Pace","Elev Gain","Elev Loss","Avg Stride Length","Avg Vertical Ratio","Avg Vertical Oscillation","Training Stress Score®","Grit","Flow","Bottom Time","Min Water Temp","Surface Interval","Decompression"
+running,2019-02-23 06:46:54,false,"Lee's Summit Running","13.94","2,377","02:14:14","167","200","5.0","154","220","9:38","6:34","1,063","971","1.09","0.0","0.0","0.0","0.0","0.0","0:00","57.2","0:00","No"
 indoor_cardio,2019-02-22 09:52:09,false,"P90X3 3.06 Agility X","0.00","243","00:34:16","100","143","0.7","--","--","--","--","--","--","0.00","0.0","0.0","0.0","0.0","0.0","0:00","71.6","0:00","No"
 running,2019-02-22 08:02:13,false,"Lee's Summit Running","3.02","332","00:20:55","148","167","2.8","173","183","6:56","5:42","102","115","1.34","0.0","0.0","0.0","0.0","0.0","0:00","55.4","0:00","No"
 indoor_cardio,2019-02-21 21:08:39,false,"P90X3 3.05 Isometrix","0.00","135","00:30:00","83","113","0.1","--","--","--","--","--","--","0.00","0.0","0.0","0.0","0.0","0.0","0:00","82.4","0:00","No"
