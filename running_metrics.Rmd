@@ -22,17 +22,17 @@ library(flexdashboard)  # dashboard framework
 dat <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/garmin_log.csv")
 names(dat) <- gsub(" ", "_", names(dat))
 
-## miles -- do I need daily aggregation?
-run <- dat[Activity_Type=="running"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Distance, Time, Calories, Avg_HR, Avg_Run_Cadence, 
-                                         Avg_Pace, Elev_Gain, Elev_Loss, Avg_Stride_Length, Aerobic_TE)]
-run <- run[Date>"2016-12-31"]
+run <- dat[Activity_Type %like% "Running"][, .(Date=as.Date(Date, format="%m/%d/%Y"), Distance, Calories)] ## Time
+run <- run[Date>"2017-12-31"]
+run <- run[, Calories:=as.numeric(gsub(",", "", Calories))]
+run <- run[, .(Distance=sum(Distance), Calories=sum(Calories)), by=Date][order(Date)]
 
 ## cardio
-cardio <- dat[Activity_Type=="indoor_cardio"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Time, Calories)]
-cardio <- cardio[Date>"2016-12-31"]
-cardio <- cardio[, Minutes:=as.numeric(substr(Time,1,2))*60 +
-                   as.numeric(substr(Time,4,5)) + 
-                   as.numeric(substr(Time,7,8))/60]
+cardio <- dat[Activity_Type %like% "Cardio"][, .(Date=as.Date(Date, format="%m/%d/%Y"), Time, Calories)]
+cardio <- cardio[Date>"2017-12-31"]
+cardio <- cardio[, Minutes:=as.numeric(substr(Time,1,1))*60 +
+                   as.numeric(substr(Time,3,4)) + 
+                   as.numeric(substr(Time,6,7))/60]
 cardio <- cardio[, .(Minutes=round(sum(Minutes)), Calories=sum(as.numeric(Calories))), by=Date]
 
 # # pace plot data
@@ -74,15 +74,13 @@ output$cardio_heatmap <- renderGvis({
                             colorAxis="{minValue: 0, colors: ['#FFF285', '#FF7956']}"))
 })
 
-
-
 ```
 
 
 ### Fitness Tracker Heatmaps
 Row {.tabset .tabset-fade}
 -------------------------------------
-
+  
 ### Running Mileage
 ```{r heatmap}
 htmlOutput("mileage_heatmap")
@@ -93,4 +91,3 @@ htmlOutput("mileage_heatmap")
 ```{r}
 htmlOutput("cardio_heatmap")
 ```
-
