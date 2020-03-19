@@ -22,17 +22,30 @@ library(flexdashboard)  # dashboard framework
 dat <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/garmin_log.csv")
 names(dat) <- gsub(" ", "_", names(dat))
 
-run <- dat[Activity_Type %like% "Running"][, .(Date=as.Date(Date, format="%m/%d/%Y"), Distance, Calories)] ## Time
+# read in archived data, then format
+arch <- fread("https://raw.githubusercontent.com/johnsug/garmin/master/archived_garmin_log.csv")
+names(arch) <- gsub(" ", "_", names(arch))
+arch[, Avg_HR:=as.integer((Avg_HR))]
+arch[, Max_HR:=as.integer((Max_HR))]
+arch[, Aerobic_TE:=as.numeric((Aerobic_TE))]
+arch[, Number_of_Runs:=as.integer((Number_of_Runs))]
+arch[, Max_HR:=as.integer((Max_HR))]
+
+# join current with archived data
+dat <- data.table(dplyr::bind_rows(dat, arch))
+
+# parse out data
+run <- dat[Activity_Type %like% "Running"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Distance, Calories)] ## Time
 run <- run[Date>"2017-12-31"]
 run <- run[, Calories:=as.numeric(gsub(",", "", Calories))]
 run <- run[, .(Distance=sum(Distance), Calories=sum(Calories)), by=Date][order(Date)]
 
 ## cardio
-cardio <- dat[Activity_Type %like% "Cardio"][, .(Date=as.Date(Date, format="%m/%d/%Y"), Time, Calories)]
+cardio <- dat[Activity_Type %like% "Cardio"][, .(Date=as.Date(Date, format="%Y-%m-%d"), Time, Calories)]
 cardio <- cardio[Date>"2017-12-31"]
 cardio <- cardio[, Minutes:=as.numeric(substr(Time,1,1))*60 +
-                   as.numeric(substr(Time,3,4)) + 
-                   as.numeric(substr(Time,6,7))/60]
+                   as.numeric(substr(Time,4,5)) + 
+                   as.numeric(substr(Time,7,8))/60]
 cardio <- cardio[, .(Minutes=round(sum(Minutes)), Calories=sum(as.numeric(Calories))), by=Date]
 
 # # pace plot data
